@@ -1,0 +1,706 @@
+<script setup>
+
+import { ref, computed, reactive, onMounted, onUnmounted, watch, nextTick, toRefs } from 'vue';
+import AuthenticatedLayout from '../../layouts/auth/AuthenticatedLayout.vue';
+import { useToast } from 'vue-toastification';
+import { EllipsisVerticalIcon } from '@heroicons/vue/16/solid';
+import TextInput from '../../components/input/TextInput.vue';
+import Modal from '../../components/modal/Modal.vue';
+import StudentAssignmentModal from '../../components/modal/StudentAssignmentModal.vue';
+import { useComputerStore} from '../../composable/computers';
+import { useStates } from '../../composable/states';
+import { XIcon } from 'lucide-vue-next';
+import LoaderSpinner from '../../components/spinner/LoaderSpinner.vue';
+const toast = useToast();
+
+// Stores
+const states = useStates();
+const func = useComputerStore();
+const form = reactive({ rfid_uid: '' });
+const rfidInputRef = ref(null);
+const newComputer = reactive({
+  computer_number: '',
+  ip_address: '',
+  mac_address: '',
+  laboratory_id: 1,
+  status: 'active',
+  is_online: false,
+  is_lock: false
+});
+
+const {
+      computers,
+      selectedLab,
+      selectedStatus,
+      selectedComputer,
+      selectedComputerForAssignment,
+      modalState,
+      isLoading,
+      isSuccess,
+      showAssignmentModal,
+      saveModal,
+      isDropdownOpen,
+      isSubmitting,
+      hasError,
+      errorMessage,
+      successMessage,
+      searchQuery
+      } = toRefs(states);
+
+const {
+    fetchComputers,
+    fetchLabs,
+    storeComputer,
+    updateComputer,
+    deleteComputer,
+    unlockComputer,
+    unlockByAdmin
+      } = func;
+
+// Open assignment modal
+const openAssignmentModal = (computer) => {
+  selectedComputerForAssignment.value = computer;
+  showAssignmentModal.value = true;
+  isDropdownOpen.value = null;
+};
+
+// Close assignment modal
+const closeAssignmentModal = () => {
+  showAssignmentModal.value = false;
+  selectedComputerForAssignment.value = null;
+};
+
+// Handle successful student assignment
+const handleStudentAssignment = (data) => {
+  fetchComputers();
+  
+  if (data.students) {
+    toast.success(`Successfully assigned ${data.students.length} student(s) to Computer ${data.computer.computer_number}`);
+  } else if (data.student) {
+    toast.success(`Assigned ${data.student.first_name} ${data.student.last_name} to Computer ${data.computer.computer_number}`);
+  }
+};
+
+const filteredComputers = computed(() => {
+  if (!searchQuery.value && selectedLab.value === 'all' && selectedStatus.value === 'all') {
+    return computers.value; // Return all if no filters
+  }
+
+  const query = searchQuery.value ? searchQuery.value.trim().toLowerCase() : '';
+  const labId = selectedLab.value !== 'all' ? parseInt(selectedLab.value) : null;
+  const status = selectedStatus.value !== 'all' ? selectedStatus.value : null;
+
+  return computers.value.filter((computer) => {
+    // Lab filter
+    if (labId !== null && computer.laboratory_id !== labId) return false;
+    
+    // Status filter
+    if (status !== null && computer.status !== status) return false;
+    
+    // Search filter
+    if (query) {
+      const matchesNumber = computer.computer_number?.toString().toLowerCase().includes(query);
+      const matchesIP = computer.ip_address?.toLowerCase().includes(query);
+      const matchesMAC = computer.mac_address?.toLowerCase().includes(query);
+      
+      if (!matchesNumber && !matchesIP && !matchesMAC) return false;
+    }
+    
+    return true;
+  });
+});
+
+// Clear all filters
+const clearFilters = () => {
+  selectedLab.value = 'all';
+  selectedStatus.value = 'all';
+  searchQuery.value = '';
+};
+
+const openModal = (computer) => {
+  selectedComputer.value = computer;
+  modalState.value = true;
+  hasError.value = false;
+  isSuccess.value = false;
+  form.tag = '';
+};
+
+const closeModal = () => {
+  if (isSubmitting.value) return;
+  modalState.value = false;
+  selectedComputer.value = null;
+  form.tag = '';
+};
+
+const toggleDropdown = (id) => {
+  isDropdownOpen.value = isDropdownOpen.value === id ? null : id;
+};
+
+const openAddComputerModal = () => {
+  selectedComputer.value = null;
+  Object.assign(newComputer, {
+    computer_number: '',
+    ip_address: '',
+    laboratory_id: func.labs?.[0]?.id || 1,
+    status: 'active'
+  });
+  saveModal.value = true;
+};
+
+const saveComputer = async () => {
+  try {
+    if (selectedComputer.value) {
+      await updateComputer(selectedComputer.value.id, newComputer);
+    } else {
+      await storeComputer(newComputer);
+    }
+     fetchComputers();
+    saveModal.value = false;
+  } catch (error) {
+    toast.error('Failed to save computer.');
+    console.error(error);
+  }
+};
+
+const editComputer = (computer) => {
+  selectedComputer.value = computer;
+  Object.assign(newComputer, {
+    computer_number: computer.computer_number?.toString() ?? '',
+    ip_address: computer.ip_address ?? '',
+    mac_address: computer.mac_address ?? '',
+    laboratory_id: computer.laboratory_id ?? func.labs?.[0]?.id ?? 1,
+    status: computer.status ?? 'active',
+    is_online: computer.is_online ?? false,
+    is_lock: computer.is_lock ?? false
+  });
+  saveModal.value = true;
+};
+
+const deleteComputer_func = async (id) => {
+  try {
+    await deleteComputer(id);
+    fetchComputers();
+  } catch (error) {
+    toast.error('Failed to delete computer.');
+    console.error(error);
+  }
+};
+
+const clearError = () => {
+  hasError.value = false;
+  errorMessage.value = '';
+};
+
+const unlock_function = async () => {
+  if (!form.rfid_uid) {
+    hasError.value = true;
+    errorMessage.value = 'Please enter a tag.';
+    toast.error(errorMessage.value);
+    return;
+  }
+  
+  isSubmitting.value = true;
+  
+  try {
+    const success = await unlockComputer(selectedComputer.value.id, form.rfid_uid);
+    
+    if (success) {
+      isSuccess.value = true;
+      successMessage.value = 'Computer unlocked successfully!';
+      setTimeout(() => {
+        isSubmitting.value = false;
+        closeModal();
+      }, 1200);
+    } else {
+      isSubmitting.value = false;
+    }
+  } catch (error) {
+    hasError.value = true;
+    errorMessage.value = 'Failed to unlock computer.';
+    isSubmitting.value = false;
+  }
+};
+const handleComputerEvent = ({ action, computer }) => {
+  const index = func.computers.value.findIndex(c => c.id === computer.id);
+
+  if (action === "update" && index !== -1) {
+    func.computers.value.splice(index, 1, { ...computer });
+  }
+
+  if (action === "add" && index === -1) {
+    func.computers.value.splice(computers.value.length, 0, { ...computer });
+  }
+
+  if (action === "delete" && index !== -1) {
+    func.computers.value.splice(index, 1);
+  }
+};
+
+
+const EventListener = () => {
+ if (!window.Echo) {
+    console.log('Echo is not available');
+    return;
+  }
+
+  window.Echo.channel('computers')
+    .listen('.ComputerEvent', (e) => {
+      console.log("📡 Computer update received:", e.computer);
+      fetchComputers();
+      // handleComputerEvent(e);
+    });
+}
+onMounted(async () => {
+  EventListener();
+  fetchComputers();
+  fetchLabs();
+  
+  window.Echo.channel('test-event')
+    .listen('.TestEvent', (e) => {
+        console.log("📡 Event received:", e.message);
+        alert(e.message);
+    });
+  
+});
+
+
+watch(modalState, async (newVal) => {
+  if (newVal) {
+    await nextTick();
+    rfidInputRef.value?.focus();
+  } else {
+    form.tag = '';
+  }
+});
+</script>
+
+<style scoped>
+@keyframes loading {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+</style>
+
+<template>
+  <AuthenticatedLayout>
+    <div class="py-4 max-w-7xl mx-auto sm:px-4 bg-white min-h-screen relative">
+      <!-- Enhanced Loading Overlay -->
+      <LoaderSpinner :is-loading="isLoading" subMessage="Please wait while we fetch your data" />
+
+      <div>
+        <h2 class="text-2xl text-gray-900">Computer Management</h2>
+         <p class="mt-1 text-sm text-gray-600">Manage computers, unlock remotely, and perform CRUD.</p>
+      </div>
+
+      <!-- Filters + Add -->
+      <div class="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-end mb-6 mt-5">
+        <!-- Filters -->
+        <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-end flex-1">
+
+          <!-- Search Filter-->
+            <div class="relative">
+              <input
+                  v-model="searchQuery"
+                  type="text"
+                  placeholder="Search globally..."
+                  class="w-64 border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
+              >
+              <button
+                  v-if="searchQuery"
+                  @click="searchQuery = ''"
+                  class="absolute right-2 top-2 text-gray-400 hover:text-gray-600"
+              >
+                  <XIcon :stroke-width="1.50" class="w-4 h-4" />
+              </button>
+          </div>
+          <!-- Lab -->
+          <div class="w-full sm:w-auto min-w-[200px]">
+            <select
+              v-model="selectedLab"
+              class="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
+            >
+              <option value="all">All Laboratories</option>
+              <option v-for="lab in func.labs || []" :key="lab.id" :value="lab.id">
+                {{ lab.name }}
+              </option>
+            </select>
+          </div>
+
+          <!-- Status -->
+          <div class="w-full sm:w-auto min-w-[160px]">
+            <select
+              v-model="selectedStatus"
+              class="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
+            >
+              <option value="all">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+              <option value="maintenance">Maintenance</option>
+            </select>
+          </div>
+
+          <!-- Clear Filters -->
+          <div class="w-ful sm-w-auto min-w-auto">
+            <button
+              @click="clearFilters"
+              class="px-3 py-2 text-xs text-gray-600 hover:text-gray-800 transition-colors">
+              Clear Filters
+            </button>
+          </div>
+        </div>
+
+        <!-- Add -->
+        <div class="w-full sm:w-auto">
+          <button
+            @click="openAddComputerModal"
+            class="w-full sm:w-auto px-4 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-700 transition flex items-center justify-center gap-2 text-sm"
+          >
+           
+            <span>Add Computer</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Divider -->
+      <hr class="border-gray-200 mb-6" />
+
+      <!-- Minimal Computer Cards Grid -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 gap-4">
+        <div
+          v-for="computer in filteredComputers"
+          :key="computer.id"
+          class="relative bg-gray-300 border border-gray-200 rounded-lg p-4 hover:shadow-md hover:border-gray-300 transition-all duration-200 group"
+        >
+          <!-- Menu -->
+          <button
+            @click.stop="toggleDropdown(computer.id)"
+            class="absolute top-3 right-3 p-1 hover:bg-gray-200 rounded text-gray-500 hover:text-gray-700 transition-colors opacity-0 group-hover:opacity-100"
+          >
+            <EllipsisVerticalIcon class="h-4 w-4 text-black" />
+          </button>
+
+          <div
+            v-if="isDropdownOpen === computer.id"
+            class="absolute right-0 top-10 w-36 bg-white rounded-lg shadow-lg border border-gray-200 z-10 py-1 text-sm"
+          >
+            <button @click.stop="openAssignmentModal(computer)" class="block w-full text-left px-3 py-2 text-gray-700 hover:bg-gray-50 transition-colors">
+              Assign Student
+            </button>
+            <button @click.stop="openModal(computer)" class="block w-full text-left px-3 py-2 text-gray-700 hover:bg-gray-50 transition-colors">
+              Unlock by RFID
+            </button>
+            <button @click.stop="unlockByAdmin(computer.id)"
+            class="block w-full text-left px-3 py-2 text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Unlock directly
+            </button>
+            <button @click.stop="editComputer(computer)" class="block w-full text-left px-3 py-2 text-gray-700 hover:bg-gray-50 transition-colors">
+              Edit
+            </button>
+            <button @click.stop="deleteComputer_func(computer.id)" class="block w-full text-left px-3 py-2 text-red-600 hover:bg-red-50 transition-colors">
+              Delete
+            </button>
+          </div>
+
+          <!-- Computer Content - Click to assign students -->
+          <div class="pr-6 cursor-pointer" @click="openAssignmentModal(computer)">
+            <!-- Header with status and PC number -->
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-2">
+                <div 
+                  class="w-2.5 h-2.5 rounded-full"
+                  :class="computer.is_online ? 'bg-green-500' : 'bg-gray-400'"
+                ></div>
+                <span class="font-medium text-gray-900">PC {{ computer.computer_number }}</span>
+              </div>
+            </div>
+            
+            <!-- Main info -->
+            <div class="space-y-2 text-sm text-gray-600">
+              <div class="font-mono text-xs">{{ computer.ip_address }}</div>
+              <div class="font-mono text-xs">{{ computer.mac_address }}</div>
+              <div class="text-xs text-gray-500">{{ func.labs?.find(l => l.id === computer.laboratory_id)?.name || 'Unknown Lab' }}</div>
+              
+              <!-- Assigned students -->
+              <div v-if="computer.assigned_students_count" class="text-blue-600 text-xs font-medium">
+                {{ computer.assigned_students_count }} student{{ computer.assigned_students_count > 1 ? 's' : '' }}
+              </div>
+            </div>
+            
+            <!-- Status badges -->
+            <div class="flex gap-1 mt-3">
+              <span
+                class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+                :class="{
+                  'bg-green-100 text-green-800': computer.status === 'active',
+                  'bg-red-100 text-red-800': computer.status === 'inactive',
+                  'bg-yellow-100 text-yellow-800': computer.status === 'maintenance'
+                }"
+              >
+                {{ computer.status }}
+              </span>
+              
+              <span
+                class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+                :class="computer.is_lock 
+                  ? 'bg-red-100 text-red-800' 
+                  : 'bg-green-100 text-green-800'"
+              >
+                {{ computer.is_lock ? 'Locked' : 'Unlocked' }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Unlock Modal -->
+      <Modal :show="modalState" @close="closeModal" :closeable="!isSubmitting">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md mx-auto relative">
+          <!-- Header -->
+          <div class="flex justify-between items-center mb-6">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600">
+                <!-- lock icon -->
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 11V7a4 4 0 10-8 0v4M5 11h6m4 0h2a2 2 0 012 2v6a2 2 0 01-2 2H7a2 2 0 01-2-2v-6a2 2 0 012-2h2"
+                  />
+                </svg>
+              </div>
+              <h2 class="text-lg font-semibold text-gray-900">Scan RFID Card</h2>
+            </div>
+            <button
+              v-if="!isSubmitting"
+              @click="closeModal"
+              class="text-gray-400 hover:text-gray-600 text-xl leading-none px-1 rounded-md hover:bg-gray-100 transition"
+              aria-label="Close"
+            >
+              &times;
+            </button>
+          </div>
+
+          <!-- Computer info -->
+          <div class="mb-6 p-3 bg-blue-50 rounded-md border border-blue-100">
+            <p class="text-xs text-blue-700">Computer to unlock:</p>
+            <p class="text-base font-medium text-blue-900">
+              Computer {{ selectedComputer?.computer_number ?? 'N/A' }}
+            </p>
+          </div>
+
+          <!-- RFID input -->
+          <div class="mb-4">
+            <label for="rfid_input" class="block text-sm font-medium text-gray-700 mb-1">
+              RFID Tag
+            </label>
+            <div class="relative">
+              <TextInput
+                ref="rfidInputRef"
+                id="rfid_input"
+                type="password"
+                placeholder="Scan card..."
+                v-model="form.rfid_uid"
+                class="w-full text-center text-lg px-4 py-3 border-2 rounded-md transition-colors bg-white"
+                :class="{
+                  'border-gray-300 focus:border-blue-500 focus:ring-blue-500': !hasError && !isSuccess,
+                  'border-red-500 focus:border-red-500 focus:ring-red-500': hasError,
+                  'border-green-500 focus:border-green-500 focus:ring-green-500': isSuccess,
+                  'cursor-not-allowed opacity-50': isSubmitting
+                }"
+                maxlength="10"
+                :disabled="isSubmitting"
+                autocomplete="off"
+                @keyup.enter="unlock_function"
+                @input="clearError"
+              />
+
+              <!-- Spinner -->
+              <div
+                v-if="isSubmitting"
+                class="absolute right-3 top-1/2 -translate-y-1/2"
+              >
+                <div class="animate-spin rounded-full h-5 w-5 border-2 border-blue-400 border-t-transparent"></div>
+              </div>
+
+              <!-- Success check -->
+              <div
+                v-else-if="isSuccess"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-green-600"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+            </div>
+
+            <!-- Feedback -->
+            <p v-if="hasError" class="mt-2 text-sm text-red-600 flex items-center gap-1">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M12 8v4m0 4h.01M21 12A9 9 0 113 12a9 9 0 0118 0z" />
+              </svg>
+              {{ errorMessage }}
+            </p>
+            <p v-if="isSuccess" class="mt-2 text-sm text-green-600 flex items-center gap-1">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M5 13l4 4L19 7" />
+              </svg>
+              {{ successMessage }}
+            </p>
+          </div>
+
+          <!-- Tag length -->
+          <p v-if="form.tag" class="mt-2 text-xs text-gray-500 text-center">
+            Tag length: {{ form.rfid_uid.length }}/10
+          </p>
+
+          <!-- Actions -->
+          <div class="flex justify-end gap-2 mt-6">
+            <button
+              v-if="!isSubmitting"
+              @click="closeModal"
+              class="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition"
+            >
+              Cancel
+            </button>
+            <button
+              :disabled="isSubmitting"
+              @click="unlock_function"
+              class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition"
+            >
+              {{ isSubmitting ? 'Unlocking…' : 'Unlock' }}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+    <!-- Add / Edit Computer Modal -->
+<Modal :show="saveModal" @close="saveModal = false">
+  <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-auto relative">
+    <!-- Header -->
+    <div class="px-6 py-4 border-b border-gray-100">
+      <h2 class="text-xl font-semibold text-gray-900">
+        {{ selectedComputer ? 'Edit Computer' : 'Add Computer' }}
+      </h2>
+    </div>
+
+    <!-- Form Content -->
+    <div class="px-6 py-5 space-y-4">
+      <!-- Computer Number -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Computer Number</label>
+        <input
+          v-model="newComputer.computer_number"
+          type="text"
+          placeholder="PC-001"
+          class="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:border-gray-400 focus:ring-1 focus:ring-gray-200 bg-gray-50 focus:bg-white transition"
+        >
+      </div>
+
+      <!-- IP Address -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">IP Address</label>
+        <input
+          v-model="newComputer.ip_address"
+          type="text"
+          placeholder="192.168.1.100"
+          class="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:border-gray-400 focus:ring-1 focus:ring-gray-200 bg-gray-50 focus:bg-white transition font-mono"
+        >
+      </div>
+
+      <!-- MAC Address -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">MAC Address</label>
+        <input
+          v-model="newComputer.mac_address"
+          type="text"
+          placeholder="00:1B:44:11:3A:B7"
+          class="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:border-gray-400 focus:ring-1 focus:ring-gray-200 bg-gray-50 focus:bg-white transition font-mono"
+        >
+      </div>
+
+      <!-- Laboratory -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Laboratory</label>
+        <select
+          v-model="newComputer.laboratory_id"
+          class="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:border-gray-400 focus:ring-1 focus:ring-gray-200 bg-gray-50 focus:bg-white transition"
+        >
+          <option value="" disabled>Select laboratory</option>
+          <option v-if="(func.labs?.length ?? 0) === 0" disabled>No labs available</option>
+          <option v-for="lab in func.labs || []" :key="lab.id" :value="lab.id">
+            {{ lab.name }}
+          </option>
+        </select>
+      </div>
+
+      <!-- Status -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+        <select
+          v-model="newComputer.status"
+          class="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:border-gray-400 focus:ring-1 focus:ring-gray-200 bg-gray-50 focus:bg-white transition"
+        >
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+          <option value="maintenance">Maintenance</option>
+        </select>
+      </div>
+
+      <!-- Status Checkboxes -->
+      <div class="grid grid-cols-2 gap-4 pt-2">
+        <div class="flex items-center">
+          <input
+            id="is_online"
+            v-model="newComputer.is_online"
+            type="checkbox"
+            class="h-4 w-4 text-gray-600 focus:ring-gray-300 border-gray-300 rounded"
+          >
+          <label for="is_online" class="ml-2 text-sm text-gray-700">Online</label>
+        </div>
+
+        <div class="flex items-center">
+          <input
+            id="is_lock"
+            v-model="newComputer.is_lock"
+            type="checkbox"
+            class="h-4 w-4 text-gray-600 focus:ring-gray-300 border-gray-300 rounded"
+          >
+          <label for="is_lock" class="ml-2 text-sm text-gray-700">Locked</label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer Actions -->
+    <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 rounded-b-lg flex justify-end gap-3">
+      <button
+        @click="saveModal = false"
+        class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition"
+      >
+        Cancel
+      </button>
+      <button
+        @click="saveComputer"
+        class="px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-md hover:bg-black transition"
+      >
+        Save
+      </button>
+    </div>
+  </div>
+</Modal>
+
+        <!--Student Assignment Modal -->
+      <StudentAssignmentModal
+        :show="showAssignmentModal"
+        :computer="selectedComputerForAssignment"
+        @close="closeAssignmentModal"
+        @assign="handleStudentAssignment"
+      />
+    </div>
+  </AuthenticatedLayout>
+</template>

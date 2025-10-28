@@ -1,0 +1,136 @@
+import { defineStore } from 'pinia';
+import { ref, toRefs } from 'vue';
+import axios from 'axios';
+import { useApiUrl } from '../api/api';
+import { useToast } from 'vue-toastification';
+import { useStates } from './states';
+
+const toast = useToast();
+const { api, getAuthHeader } = useApiUrl();
+
+
+
+// Program functions
+  export const useProgramStore = defineStore('program', () => {
+    const states = useStates();
+    const {
+          programs,
+          paginationPrograms,
+          paginatedPrograms
+        } = toRefs(states);
+    const {
+          success,
+          error,
+        } = states;
+
+
+  const fetchPrograms = async () => {
+      if (programs.value.length > 0) {
+        return;
+      }
+    try {
+      const response = await axios.get(`${api}/programs`, getAuthHeader());
+
+      // non-paginated list
+      programs.value = response.data.programs || [];
+
+      // paginated list
+      const paginated = response.data.paginatedPrograms;
+      paginatedPrograms.value = paginated.data || [];
+      paginationPrograms.value = {
+        current_page: paginated.current_page,
+        last_page: paginated.last_page,
+        per_page: paginated.per_page,
+        total: paginated.total,
+      };
+
+      // success(response.data.message);
+      console.log("All programs:", programs.value);
+      console.log("Paginated:", paginatedPrograms.value);
+      console.log("Pagination Info:", paginationPrograms.value);
+    } catch (error) {
+      programs.value = [];
+      paginatedPrograms.value = [];
+      toast.error("Failed to fetch programs");
+      console.error("Error fetching programs:", error);
+    }
+  };
+
+
+    const getProgram = async (page = 1) => {
+      try {
+        const response = await axios.get(`${api}/programs?page=${page}`, getAuthHeader());
+        programs.value = response.data.programs.data || [];
+        paginationPrograms.value = {
+          current_page: response.data.programs.current_page,
+          last_page: response.data.programs.last_page,
+          per_page: response.data.programs.per_page,
+          total: response.data.programs.total,
+        }
+        // success(response.data.message);
+        console.log(programs.value);
+        console.log(paginationPrograms.value);
+      } catch (err) {
+        error(err.response.data.message);
+        console.error('Error fetching programs:', err);
+      }
+    }
+
+
+    const addProgram = async (program) => {
+      try {
+        const response = await axios.post(`${api}/programs`, program, getAuthHeader());
+        programs.value.push(response.data.program);
+        success(response.data.message);
+        console.log(response.data.program);
+        fetchPrograms();
+      } catch (err) {
+        error(err.response.data.message);
+        console.error('Error adding program:', err);
+      }
+    }
+
+    const updateProgram = async (id, program) => {
+      try{
+        const response = await axios.put(`${api}/programs/${id}`, program, getAuthHeader());
+        const index = programs.value.findIndex(p => p._id === id);
+        if(index !== -1){
+          programs.value[index] = response.data.program;
+        }
+        success(response.data.message);
+        console.log(response.data.program);
+      }catch(err){
+        error(err.response.data.message);
+        console.error('Error updating program:', err);
+      }
+    }
+
+    const deleteProgram = async (id) => {
+        try{
+          const response = await axios.delete(`${api}/programs/${id}`, getAuthHeader());
+          const index = programs.value.findIndex(p => p._id === id);
+          if(index !== -1){
+            programs.value.splice(index, 1);
+          }
+          success(response.data.message);
+          console.log(response.data.program);
+          fetchPrograms();
+        }catch(err){
+          error(err.response.data.message);
+          console.error('Error deleting program:', err);
+        }
+      }
+
+
+  
+    return {
+      programs,
+
+      fetchPrograms,
+      addProgram,
+      updateProgram,
+      deleteProgram,
+      getProgram,
+    
+    };
+  });
