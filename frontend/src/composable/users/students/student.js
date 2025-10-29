@@ -30,10 +30,34 @@ export const useStudentStore = defineStore('student', () => {
       console.error('Error storing student:', err);
     }
   }
-  const fetchStudents = async (page = 1) => {
+  const fetchStudents = async (page = 1, filters = {}) => {
     try{
       isLoading.value = true;
-      const response = await axios.get(`${api}/students?page=${page}`, getAuthHeader());
+      
+      // Build query parameters
+      const params = new URLSearchParams();
+      params.append('page', page);
+      
+      if (filters.search) {
+        params.append('search', filters.search);
+      }
+      if (filters.program_id && filters.program_id !== 'all') {
+        params.append('program_id', filters.program_id);
+      }
+      if (filters.year_level_id && filters.year_level_id !== 'all') {
+        params.append('year_level_id', filters.year_level_id);
+      }
+      if (filters.section_id && filters.section_id !== 'all') {
+        params.append('section_id', filters.section_id);
+      }
+      if (filters.status && filters.status !== 'all') {
+        params.append('status', filters.status);
+      }
+      
+      const queryString = params.toString();
+      const url = `${api}/students?${queryString}`;
+      
+      const response = await axios.get(url, getAuthHeader());
       students.value = response.data.students.data || [];
       pagination.value = {
         current_page: response.data.students.current_page,
@@ -57,7 +81,6 @@ export const useStudentStore = defineStore('student', () => {
     try{
       await axios.put(`${api}/students/${id}`, data, getAuthHeader());
       success('Student updated successfully!');
-      await fetchStudents();
     }catch(err){
       error('Failed to update student.');
       console.error('Error updating student:', err);
@@ -68,7 +91,6 @@ export const useStudentStore = defineStore('student', () => {
     try{
       await axios.delete(`${api}/students/${id}`, getAuthHeader());
       success('Student deleted successfully!');
-      await fetchStudents();
     }catch(err){
       error('Failed to delete student.');
       console.error('Error deleting student:', err);

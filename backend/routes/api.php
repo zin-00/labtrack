@@ -34,7 +34,7 @@ Route::post('auth/check-email', [AuthController::class, 'isEmailExist']);
 
 Route::post('/computer-unlock', [ComputerController::class, 'unlockAssignedComputer']);
 Route::post('/unlock-computers-by-lab/{labId}/{rfid_uid}', [ComputerController::class, 'unlockComputersByLab']);
-
+Route::get('/computers', [ComputerController::class, 'index']);
 
 
 Route::middleware('auth:sanctum')->group(function () {

@@ -6,6 +6,7 @@ import Table from '../../components/table/Table.vue';
 import { XMarkIcon } from '@heroicons/vue/24/solid';
 import { useComputerActivityStore } from '../../composable/activity/computerActivity';
 import dayjs from 'dayjs';
+import LoaderSpinner from '../../components/spinner/LoaderSpinner.vue';
 
 const states = useStates();
 const activity = useComputerActivityStore();
@@ -65,7 +66,8 @@ onMounted(() => {
 
 <template>
   <AuthenticatedLayout>
-    <div class="py-4 max-w-7xl mx-auto sm:px-4 bg-white">
+    <div class="py-4 max-w-7xl mx-auto sm:px-4 bg-white min-h-screen relative">
+      <LoaderSpinner :isLoading="isLoading" subMessage="Loading computer activity..." />
       <!-- Header -->
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>

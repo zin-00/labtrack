@@ -1,5 +1,4 @@
 <script setup>
-import { LoopingRhombusesSpinner } from 'epic-spinners';
 import { watch } from 'vue';
 
 const props = defineProps({
@@ -34,7 +33,7 @@ watch(() => props.isLoading, (newVal) => {
   >
     <div 
       v-if="isLoading"
-      class="fixed inset-0 bg-gradient-to-br from-gray-50 via-white to-gray-100 z-50 flex items-center justify-center backdrop-blur-sm"
+      class="absolute inset-0 bg-gradient-to-br from-gray-50 via-white to-gray-100 z-50 flex items-center justify-center backdrop-blur-sm"
     >
       <div class="text-center">
         <!-- Animated Container -->
@@ -52,18 +51,10 @@ watch(() => props.isLoading, (newVal) => {
               class="h-24 w-24 object-contain drop-shadow-lg animate-pulse"
             />
           </div>
-          
-          <!-- Spinner -->
-          <div class="relative">
-            <LoopingRhombusesSpinner :animation-duration="1200" :size="60" color="#1f2937" />
-          </div>
         </div>
         
         <!-- Loading Text with Animation -->
-        <div class="space-y-2 mt-4">
-          <p class="text-gray-800 text-base font-semibold animate-pulse">
-            Loading Computers
-          </p>
+        <div class="space-y-2 mt-0">
           <div class="flex items-center justify-center gap-1">
             <span class="w-2 h-2 bg-gray-800 rounded-full animate-bounce" style="animation-delay: 0ms"></span>
             <span class="w-2 h-2 bg-gray-600 rounded-full animate-bounce" style="animation-delay: 150ms"></span>

@@ -211,46 +211,44 @@ const barChartOptions = computed(() => ({
   }
 }));
 
-const radialOptions = {
+const donutOptions = {
   chart: {
-    type: 'radialBar',
+    type: 'donut',
     sparkline: { enabled: false }
   },
   plotOptions: {
-    radialBar: {
-      hollow: {
-        size: '55%',
-        background: 'transparent'
-      },
-      track: {
-        background: '#F3F4F6',
-        strokeWidth: '100%'
-      },
-      dataLabels: {
-        name: {
+    pie: {
+      donut: {
+        size: '70%',
+        labels: {
           show: true,
-          fontSize: '13px',
-          fontWeight: '600',
-          color: '#374151',
-          offsetY: -10
-        },
-        value: {
-          fontSize: '24px',
-          fontWeight: 'bold',
-          color: '#111827',
-          offsetY: 5,
-          formatter: function (val) {
-            return parseFloat(val).toFixed(2) + '%';
-          }
-        },
-        total: {
-          show: true,
-          label: 'Total',
-          fontSize: '13px',
-          color: '#6B7280',
-          formatter: function (w) {
-            const total = w.globals.series.reduce((a, b) => a + b, 0);
-            return total.toFixed(2) + '%';
+          name: {
+            show: true,
+            fontSize: '14px',
+            fontWeight: '600',
+            color: '#374151',
+            offsetY: -10
+          },
+          value: {
+            show: true,
+            fontSize: '28px',
+            fontWeight: 'bold',
+            color: '#111827',
+            offsetY: 5,
+            formatter: function (val) {
+              return val;
+            }
+          },
+          total: {
+            show: true,
+            label: 'Total Nodes',
+            fontSize: '13px',
+            fontWeight: '500',
+            color: '#6B7280',
+            formatter: function (w) {
+              const total = w.globals.seriesTotals.reduce((a, b) => a + b, 0);
+              return total;
+            }
           }
         }
       }
@@ -263,7 +261,33 @@ const radialOptions = {
     position: 'bottom',
     horizontalAlign: 'center',
     fontSize: '12px',
-    markers: { width: 8, height: 8 }
+    fontWeight: '500',
+    markers: { 
+      width: 10, 
+      height: 10,
+      radius: 2
+    },
+    itemMargin: {
+      horizontal: 8,
+      vertical: 4
+    }
+  },
+  dataLabels: {
+    enabled: false
+  },
+  stroke: {
+    width: 2,
+    colors: ['#fff']
+  },
+  tooltip: {
+    theme: 'light',
+    y: {
+      formatter: function(val, { seriesIndex, w }) {
+        const total = w.globals.seriesTotals.reduce((a, b) => a + b, 0);
+        const percentage = ((val / total) * 100).toFixed(1);
+        return val + ' (' + percentage + '%)';
+      }
+    }
   }
 };
 
@@ -370,74 +394,81 @@ onMounted(async () => {
       </div>
 
       <!-- Main Grid Section -->
-      <div class="grid grid-cols-1 xl:grid-cols-4 gap-6">
-        <!-- Left Side - Takes 3 columns -->
-        <div class="xl:col-span-3 space-y-6">
-          <!-- Enhanced Stat Cards -->
-          <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <div class="flex items-center justify-between mb-6">
-              <h2 class="text-lg font-semibold text-gray-900">System Node Status</h2>
-              <router-link 
-                to="/computer_logs"
-                class="text-xs bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg font-medium hover:bg-blue-100 transition-colors"
-              >
-                View All Logs
-              </router-link>
+      <div class="space-y-6">
+        <!-- Top Stats Cards - Full Width -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <StatCard 
+            title="Online Nodes" 
+            :value="onlineCount" 
+            change="+1.26%"
+            :trend="'up'"
+          />
+          <StatCard 
+            title="Offline Nodes" 
+            :value="offlineCount" 
+            change="-1.56%"
+            :trend="'down'"
+          />
+          <StatCard 
+            title="Active Sessions" 
+            :value="activeCount" 
+            change="+3.26%"
+            :trend="'up'"
+          />
+          <StatCard 
+            title="Total Units" 
+            :value="totalCount" 
+            change="+3.25%"
+            :trend="'up'"
+          />
+        </div>
+
+        <!-- Charts Row - 3 Columns -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- Donut Chart - Compact -->
+          <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+            <div class="mb-3">
+              <h3 class="text-base font-semibold text-gray-900">Node Distribution</h3>
+              <p class="text-xs text-gray-500 mt-0.5">Status breakdown</p>
             </div>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <StatCard 
-                title="Online Nodes" 
-                :value="onlineCount" 
-                change="+1.26%"
-                :trend="'up'"
-              />
-              <StatCard 
-                title="Offline Nodes" 
-                :value="offlineCount" 
-                change="-1.56%"
-                :trend="'down'"
-              />
-              <StatCard 
-                title="Active Sessions" 
-                :value="activeCount" 
-                change="+3.26%"
-                :trend="'up'"
-              />
-              <StatCard 
-                title="Total Units" 
-                :value="totalCount" 
-                change="+3.25%"
-                :trend="'up'"
-              />
+            <apexchart
+              v-if="!isLoading"
+              height="220"
+              type="donut"
+              :options="donutOptions"
+              :series="radialSeries"
+            />
+            <div v-else class="h-52 flex items-center justify-center">
+              <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-gray-500"></div>
             </div>
           </div>
 
-          <!-- Enhanced Line Chart -->
-          <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <div class="flex items-center justify-between mb-6">
+          <!-- Line Chart - Takes 2 columns -->
+          <div class="lg:col-span-2 bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+            <div class="flex items-center justify-between mb-4">
               <div>
-                <h3 class="text-lg font-semibold text-gray-900">Node Activity Trends</h3>
-                <p class="text-sm text-gray-500 mt-1">Real-time monitoring of system nodes</p>
+                <h3 class="text-base font-semibold text-gray-900">Activity Trends</h3>
+                <p class="text-xs text-gray-500 mt-0.5">System nodes monitoring</p>
               </div>
-              <div class="flex gap-2">
+              <div class="flex gap-1.5">
                 <button 
                   @click="setPeriod('month')"
-                  :class="selectedPeriod === 'month' ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'"
-                  class="px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors"
+                  :class="selectedPeriod === 'month' ? 'bg-gray-200 text-gray-800' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'"
+                  class="px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors"
                 >
                   Month
                 </button>
                 <button 
                   @click="setPeriod('week')"
-                  :class="selectedPeriod === 'week' ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'"
-                  class="px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors"
+                  :class="selectedPeriod === 'week' ? 'bg-gray-200 text-gray-800' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'"
+                  class="px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors"
                 >
                   Week
                 </button>
                 <button 
                   @click="setPeriod('day')"
-                  :class="selectedPeriod === 'day' ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'"
-                  class="px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors"
+                  :class="selectedPeriod === 'day' ? 'bg-gray-200 text-gray-800' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'"
+                  class="px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors"
                 >
                   Day
                 </button>
@@ -445,55 +476,156 @@ onMounted(async () => {
             </div>
             <apexchart
               v-if="!isLoading"
-              height="320"
+              height="220"
               type="area"
               :options="lineChartOptions"
               :series="lineChartSeries"
             />
-            <div v-else class="h-80 flex items-center justify-center">
-              <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+            <div v-else class="h-52 flex items-center justify-center">
+              <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-gray-500"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom Row - Bar Chart and Stats -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- Weekly Session Hours - Takes 2 columns -->
+          <div class="lg:col-span-2 bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h3 class="text-base font-semibold text-gray-900">Weekly Session Hours</h3>
+                <p class="text-xs text-gray-500 mt-0.5">Lab usage overview</p>
+              </div>
+              <div class="text-right">
+                <div class="text-xl font-bold text-gray-900">{{ totalWeeklyHours }}<span class="text-sm text-gray-500">h</span></div>
+                <div class="flex items-center justify-end gap-1 mt-0.5">
+                  <TrendingUpIcon class="w-3 h-3 text-green-600" />
+                  <span class="text-xs font-medium text-green-600">{{ weeklyGrowth }}</span>
+                </div>
+              </div>
+            </div>
+
+            <apexchart
+              height="200"
+              type="bar"
+              :options="barChartOptions"
+              :series="barChartSeries"
+            />
+            
+            <div class="mt-4 pt-3 border-t border-gray-100 grid grid-cols-3 gap-4 text-center">
+              <div>
+                <div class="text-xs text-gray-500">Peak Day</div>
+                <div class="text-sm font-semibold text-gray-900 mt-0.5">Sunday</div>
+              </div>
+              <div>
+                <div class="text-xs text-gray-500">Avg/Day</div>
+                <div class="text-sm font-semibold text-gray-900 mt-0.5">{{ (totalWeeklyHours / 7).toFixed(1) }}h</div>
+              </div>
+              <div>
+                <div class="text-xs text-gray-500">Avg Session</div>
+                <div class="text-sm font-semibold text-gray-900 mt-0.5">{{ averageSessionDuration }}h</div>
+              </div>
             </div>
           </div>
 
-          <!-- Enhanced Latest Logs Table -->
-          <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <div class="flex items-center justify-between mb-6">
-              <div>
-                <h3 class="text-lg font-semibold text-gray-900">Recent Activity</h3>
-                <p class="text-sm text-gray-500 mt-1">Latest system access logs</p>
-              </div>
-              <router-link 
-                to="/computer_logs"
-                class="text-xs bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg font-medium hover:bg-blue-100 transition-colors inline-flex items-center gap-1"
-              >
-                <span>View All</span>
-                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                </svg>
-              </router-link>
+          <!-- Quick Stats Summary -->
+          <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+            <div class="mb-4">
+              <h3 class="text-base font-semibold text-gray-900">Quick Stats</h3>
+              <p class="text-xs text-gray-500 mt-0.5">System overview</p>
             </div>
+            
+            <div class="space-y-3">
+              <div class="p-3 rounded-lg bg-green-50 border border-green-100">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <div class="text-xs text-gray-600 font-medium">Active Nodes</div>
+                    <div class="text-2xl font-bold text-green-600 mt-1">{{ activeCount }}</div>
+                  </div>
+                  <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                    <ActivityIcon class="w-6 h-6 text-green-600" />
+                  </div>
+                </div>
+              </div>
 
-            <div class="overflow-x-auto">
+              <div class="p-3 rounded-lg bg-red-50 border border-red-100">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <div class="text-xs text-gray-600 font-medium">Inactive Nodes</div>
+                    <div class="text-2xl font-bold text-red-600 mt-1">{{ inactiveCount }}</div>
+                  </div>
+                  <div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+                    <MonitorIcon class="w-6 h-6 text-red-600" />
+                  </div>
+                </div>
+              </div>
+
+              <div class="p-3 rounded-lg bg-amber-50 border border-amber-100">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <div class="text-xs text-gray-600 font-medium">Maintenance</div>
+                    <div class="text-2xl font-bold text-amber-600 mt-1">{{ maintenanceCount }}</div>
+                  </div>
+                  <div class="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center">
+                    <ClockIcon class="w-6 h-6 text-amber-600" />
+                  </div>
+                </div>
+              </div>
+
+              <div class="p-3 rounded-lg bg-gray-100 border border-gray-200">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <div class="text-xs text-gray-600 font-medium">Total Units</div>
+                    <div class="text-2xl font-bold text-gray-900 mt-1">{{ totalCount }}</div>
+                  </div>
+                  <div class="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
+                    <UsersIcon class="w-6 h-6 text-gray-700" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Latest Logs Table - Full Width -->
+        <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="text-base font-semibold text-gray-900">Recent Activity</h3>
+              <p class="text-xs text-gray-500 mt-0.5">Latest system access logs</p>
+            </div>
+            <router-link 
+              to="/computer_logs"
+              class="text-xs bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg font-medium hover:bg-gray-200 transition-colors inline-flex items-center gap-1"
+            >
+              <span>View All</span>
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+              </svg>
+            </router-link>
+          </div>
+
+          <div class="overflow-x-auto">
               <Table>
                 <template #header>
                   <thead class="bg-gray-50">
                     <tr>
-                      <th class="px-4 py-3 text-xs font-semibold text-gray-700 text-left uppercase tracking-wider">
+                      <th class="px-4 py-2.5 text-xs font-semibold text-gray-700 text-left uppercase tracking-wider">
                         Student
                       </th>
-                      <th class="px-4 py-3 text-xs font-semibold text-gray-700 text-left uppercase tracking-wider hidden lg:table-cell">
+                      <th class="px-4 py-2.5 text-xs font-semibold text-gray-700 text-left uppercase tracking-wider hidden lg:table-cell">
                         Laboratory
                       </th>
-                      <th class="px-4 py-3 text-xs font-semibold text-gray-700 text-left uppercase tracking-wider hidden md:table-cell">
+                      <th class="px-4 py-2.5 text-xs font-semibold text-gray-700 text-left uppercase tracking-wider hidden md:table-cell">
                         Workstation
                       </th>
-                      <th class="px-4 py-3 text-xs font-semibold text-gray-700 text-left uppercase tracking-wider hidden xl:table-cell">
+                      <th class="px-4 py-2.5 text-xs font-semibold text-gray-700 text-left uppercase tracking-wider hidden xl:table-cell">
                         IP Address
                       </th>
-                      <th class="px-4 py-3 text-xs font-semibold text-gray-700 text-left uppercase tracking-wider">
+                      <th class="px-4 py-2.5 text-xs font-semibold text-gray-700 text-left uppercase tracking-wider">
                         Time
                       </th>
-                      <th class="px-4 py-3 text-xs font-semibold text-gray-700 text-left uppercase tracking-wider hidden sm:table-cell">
+                      <th class="px-4 py-2.5 text-xs font-semibold text-gray-700 text-left uppercase tracking-wider hidden sm:table-cell">
                         Status
                       </th>
                     </tr>
@@ -506,9 +638,9 @@ onMounted(async () => {
                     :key="log.id"
                     class="hover:bg-gray-50 transition-colors border-b border-gray-100"
                   >
-                    <td class="px-4 py-4">
-                      <div class="flex items-center gap-3">
-                        <div class="w-9 h-9 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                    <td class="px-4 py-3">
+                      <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 bg-gradient-to-br from-gray-500 to-gray-600 rounded-full flex items-center justify-center flex-shrink-0">
                           <span class="text-white text-xs font-semibold">
                             {{ log.student?.first_name?.charAt(0) || 'N' }}{{ log.student?.last_name?.charAt(0) || 'A' }}
                           </span>
@@ -523,13 +655,13 @@ onMounted(async () => {
                         </div>
                       </div>
                     </td>
-                    <td class="px-4 py-4 hidden lg:table-cell">
-                      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
+                    <td class="px-4 py-3 hidden lg:table-cell">
+                      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
                         <MonitorIcon class="w-3 h-3" />
                         {{ log.computer?.laboratory?.name || 'N/A' }}
                       </span>
                     </td>
-                    <td class="px-4 py-4 hidden md:table-cell">
+                    <td class="px-4 py-3 hidden md:table-cell">
                       <span class="inline-flex items-center gap-1 font-mono text-xs bg-gray-100 text-gray-700 px-2.5 py-1 rounded-md">
                         <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                           <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/>
@@ -537,14 +669,14 @@ onMounted(async () => {
                         PC-{{ log.computer?.computer_number || 'N/A' }}
                       </span>
                     </td>
-                    <td class="px-4 py-4 hidden xl:table-cell">
+                    <td class="px-4 py-3 hidden xl:table-cell">
                       <code class="text-xs bg-gray-100 text-gray-700 px-2.5 py-1 rounded-md font-mono">
                         {{ log.ip_address || '—' }}
                       </code>
                     </td>
-                    <td class="px-4 py-4">
+                    <td class="px-4 py-3">
                       <div class="flex items-center gap-2">
-                        <ClockIcon class="w-4 h-4 text-gray-400" />
+                        <ClockIcon class="w-3.5 h-3.5 text-gray-400" />
                         <div>
                           <div class="text-xs font-medium text-gray-900">
                             {{ getTimeAgo(log.created_at) }}
@@ -555,7 +687,7 @@ onMounted(async () => {
                         </div>
                       </div>
                     </td>
-                    <td class="px-4 py-4 hidden sm:table-cell">
+                    <td class="px-4 py-3 hidden sm:table-cell">
                       <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                         <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
                         Active
@@ -565,16 +697,16 @@ onMounted(async () => {
                   
                   <!-- Empty State -->
                   <tr v-if="!latestLogs || latestLogs.length === 0">
-                    <td colspan="6" class="px-4 py-12 text-center">
-                      <div class="flex flex-col items-center gap-3">
-                        <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
-                          <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <td colspan="6" class="px-4 py-10 text-center">
+                      <div class="flex flex-col items-center gap-2">
+                        <div class="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center">
+                          <svg class="w-7 h-7 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                           </svg>
                         </div>
                         <div>
                           <p class="text-sm font-medium text-gray-900">No activity found</p>
-                          <p class="text-sm text-gray-500">Recent system logs will appear here</p>
+                          <p class="text-xs text-gray-500 mt-0.5">Recent system logs will appear here</p>
                         </div>
                       </div>
                     </td>
@@ -583,87 +715,6 @@ onMounted(async () => {
               </Table>
             </div>
           </div>
-        </div>
-
-        <!-- Right Side - Takes 1 column -->
-        <div class="space-y-6">
-          <!-- Enhanced Radial Chart -->
-          <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <div class="mb-4">
-              <h3 class="text-lg font-semibold text-gray-900 mb-1">Node Distribution</h3>
-              <p class="text-sm text-gray-600">Current uptime status</p>
-            </div>
-            <apexchart
-              v-if="!isLoading"
-              height="250"
-              type="radialBar"
-              :options="radialOptions"
-              :series="radialSeries"
-            />
-            <div v-else class="h-64 flex items-center justify-center">
-              <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-            </div>
-            
-            <!-- Quick Stats -->
-            <div class="mt-4 pt-4 border-t border-gray-100 grid grid-cols-3 gap-2">
-              <div class="text-center">
-                <div class="text-lg font-bold text-green-600">{{ activeCount }}</div>
-                <div class="text-xs text-gray-500">Active</div>
-              </div>
-              <div class="text-center">
-                <div class="text-lg font-bold text-red-600">{{ inactiveCount }}</div>
-                <div class="text-xs text-gray-500">Inactive</div>
-              </div>
-              <div class="text-center">
-                <div class="text-lg font-bold text-amber-600">{{ maintenanceCount }}</div>
-                <div class="text-xs text-gray-500">Maintenance</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Enhanced Weekly Usage Bar Chart -->
-          <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <div class="mb-4">
-              <h3 class="text-lg font-semibold text-gray-900 mb-1">Weekly Session Hours</h3>
-              <p class="text-sm text-gray-600">Total computer lab usage time</p>
-            </div>
-            
-            <!-- Summary Stats -->
-            <div class="mb-6 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg">
-              <div class="flex items-center justify-between mb-2">
-                <span class="text-sm text-gray-600">Total Hours</span>
-                <div class="flex items-center gap-1">
-                  <TrendingUpIcon class="w-4 h-4 text-green-600" />
-                  <span class="text-sm font-medium text-green-600">{{ weeklyGrowth }}</span>
-                </div>
-              </div>
-              <div class="text-3xl font-bold text-gray-900">
-                {{ totalWeeklyHours.toLocaleString() }}<span class="text-lg text-gray-500">h</span>
-              </div>
-              <div class="text-xs text-gray-600 mt-1">
-                Avg: {{ (totalWeeklyHours / 7).toFixed(1) }}h per day
-              </div>
-            </div>
-
-            <apexchart
-              height="180"
-              type="bar"
-              :options="barChartOptions"
-              :series="barChartSeries"
-            />
-            
-            <div class="mt-4 pt-4 border-t border-gray-100 space-y-2">
-              <div class="flex items-center justify-between text-xs">
-                <span class="text-gray-600">Peak Day</span>
-                <span class="font-semibold text-gray-900">Sunday (201h)</span>
-              </div>
-              <div class="flex items-center justify-between text-xs">
-                <span class="text-gray-600">Avg Session</span>
-                <span class="font-semibold text-gray-900">{{ averageSessionDuration }}h</span>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   </AuthenticatedLayout>

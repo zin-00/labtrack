@@ -23,19 +23,31 @@ export const useLaboratoryStore = defineStore('laboratory', () => {
   const selectedComputers = ref([]);
   const currentLabId = ref(null);
 
-  const fetchLaboratories= async () => {
-    if(laboratories.value.length > 0){
-        return;
-    }
+  const fetchLaboratories= async (filters = {}) => {
     try {
-      const response = await axios.get(`${api}/laboratories`, getAuthHeader());
+      isLoading.value = true;
+      
+      // Build query parameters
+      const params = new URLSearchParams();
+      if (filters.search) {
+        params.append('search', filters.search);
+      }
+      if (filters.status && filters.status !== 'all') {
+        params.append('status', filters.status);
+      }
+      
+      const queryString = params.toString();
+      const url = queryString ? `${api}/laboratories?${queryString}` : `${api}/laboratories`;
+      
+      const response = await axios.get(url, getAuthHeader());
       laboratories.value = response.data.laboratories || [];
-        console.log(laboratories.value);
-    
+      console.log(laboratories.value);
     } catch (error) {
       laboratories.value = [];
       toast.error('Failed to fetch labs');
       console.error('Error fetching labs:', error);
+    } finally {
+      isLoading.value = false;
     }
   };
 

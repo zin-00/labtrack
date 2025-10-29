@@ -9,7 +9,18 @@ use Illuminate\Http\Request;
 class YearLevelController extends Controller
 {
     public function index(Request $request){
-        $yearLevels = YearLevel::orderBy('created_at', 'desc')->paginate(7);
+        $query = YearLevel::query();
+
+        // Search filter
+        if ($request->has('search') && !empty($request->search)) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
+
+        $yearLevels = $query->orderBy('created_at', 'desc')->paginate(7);
         $yearLevelsNotPaginated = YearLevel::all();
 
         return response()->json([

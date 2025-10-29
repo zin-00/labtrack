@@ -16,12 +16,14 @@ export const useYearLevelStore = defineStore("yearLevel", () => {
         } = toRefs(states);
 
     // Get paginated year levels
-    const getYearLevels = async (page = 1) => {
-        if (yearLevels.value.length > 0) {
-            return;
-        }
+    const getYearLevels = async (page = 1, filters = {}) => {
         try {
-            const response = await axios.get(`${api}/yearlvls?page=${page}`, getAuthHeader());
+            const params = new URLSearchParams();
+            params.append('page', page);
+            
+            if (filters.search) params.append('search', filters.search);
+
+            const response = await axios.get(`${api}/yearlvls?${params.toString()}`, getAuthHeader());
             
             yearLevels.value = response.data.yearLevels.data || [];
             yearLevelsNotPaginated.value = response.data.yearLevelsNotPaginated || [];
@@ -45,8 +47,6 @@ export const useYearLevelStore = defineStore("yearLevel", () => {
     const addYearLevel = async (data) => {
         try {
             const response = await axios.post(`${api}/yearlvls`, data, getAuthHeader());
-            
-            yearLevels.value.push(response.data.yearLevel);
 
             success(response.data.message);
         } catch (err) {
@@ -60,11 +60,6 @@ export const useYearLevelStore = defineStore("yearLevel", () => {
         try {
             const response = await axios.put(`${api}/yearlvls/${id}`, data, getAuthHeader());
 
-            const index = yearLevels.value.findIndex((lvl) => lvl.id === id);
-            if (index !== -1) {
-                yearLevels.value[index] = response.data.yearLevel;
-            }
-
             success(response.data.message);
         } catch (err) {
             error(err.response?.data?.message);
@@ -76,8 +71,6 @@ export const useYearLevelStore = defineStore("yearLevel", () => {
     const deleteYearLevel = async (id) => {
         try {
             const response = await axios.delete(`${api}/yearlvls/${id}`, getAuthHeader());
-            
-            yearLevels.value = yearLevels.value.filter((lvl) => lvl.id !== id);
 
             success(response.data.message);
         } catch (err) {

@@ -7,7 +7,7 @@
 
         export const useAdminStore = defineStore('admin', () => {
 
-            const states = useStates();    
+            const states = useStates();
             const {
                     admins,
                     isLoading,
@@ -21,7 +21,7 @@
                     statusFilter,
                     pagination,
                 } = toRefs(states);
-            
+
             const {
                     success,
                     error
@@ -45,10 +45,16 @@
                 }
             }
 
-            const fetchAdmins = async (page = 1) => {
+            const fetchAdmins = async (page = 1, filters = {}) => {
                 try {
                     isLoading.value = true;
-                    const response = await axios.get(`${api}/admin/users?page=${page}`, getAuthHeader());
+                    const params = new URLSearchParams();
+                    params.append('page', page);
+
+                    if (filters.search) params.append('search', filters.search);
+                    if (filters.status && filters.status !== 'all') params.append('status', filters.status);
+
+                    const response = await axios.get(`${api}/admin/users?${params.toString()}`, getAuthHeader());
                     admins.value = response.data.users.data || [];
                     pagination.value = {
                         current_page: response.data.users.current_page,
@@ -69,7 +75,6 @@
                 try{
                     await axios.put(`${api}/admin/users/${id}`, data, getAuthHeader());
                     success('Admin updated successfully!');
-                    await fetchAdmins(pagination.value.currentPage);
                 }catch(err){
                     error('Failed to update admin.');
                     console.error('Error updating admin:', err);
@@ -80,7 +85,6 @@
                 try{
                     await axios.delete(`${api}/admin/users/${id}`, getAuthHeader());
                     success('Admin deleted successfully!');
-                    await fetchAdmins(pagination.value.currentPage);
                 }catch(err){
                     error('Failed to delete admin.');
                     console.error('Error deleting admin:', err);
@@ -106,7 +110,7 @@
                 fetchAdmins,
                 updateAdmin,
                 deleteAdmin,
-            
+
             }
 
 

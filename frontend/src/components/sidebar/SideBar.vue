@@ -3,7 +3,7 @@
     <!-- Toggle Button -->
     <button 
       @click="toggleSidebar" 
-      class="fixed top-1/2 z-40 p-2 rounded-lg text-gray-700 dark:text-gray-300 focus:outline-none transition-all duration-300 transform -translate-y-1/2 bg-white dark:bg-gray-800 shadow-lg hover:shadow-xl"
+      class="fixed top-1/2 z-40 p-2 rounded-lg text-gray-700 focus:outline-none transition-all duration-300 transform -translate-y-1/2 bg-white shadow-md hover:shadow-lg border border-gray-200"
       :class="{
         'left-[0px]': sidebarState === 'closed',
         'left-[40px]': sidebarState === 'icon',
@@ -24,7 +24,7 @@
     
     <!-- Sidebar -->
     <div 
-      class="fixed inset-y-0 left-0 z-30 pt-16 transition-all duration-300 ease-in-out bg-white dark:bg-gray-800 shadow-lg flex flex-col"
+      class="fixed inset-y-0 left-0 z-30 pt-16 transition-all duration-300 ease-in-out bg-white shadow-sm border-r border-gray-200 flex flex-col"
       :class="{
         'w-60': sidebarState === 'full',
         'w-[60px]': sidebarState === 'icon',
@@ -35,7 +35,7 @@
     >
       <!-- Scrollable Menu Section -->
       <div class="flex-1 py-4 overflow-y-auto overflow-x-visible">
-        <ul class="space-y-2 font-medium px-2">
+        <ul class="space-y-1 font-medium px-3">
           <li v-for="item in menuItems" :key="item.id" class="relative">
             <!-- Regular menu item -->
             <router-link 
@@ -43,16 +43,16 @@
               :to="item.to" 
               @mouseenter="(e) => showTooltip(e, item.label)"
               @mouseleave="hideTooltip"
-              class="flex items-center p-2 rounded-lg transition-colors duration-200 relative"
+              class="flex items-center p-2.5 rounded-lg transition-all duration-200 relative group"
               :class="{
-                'bg-gray-900 dark:bg-gray-700 text-white': isActiveRoute(item.to),
-                'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700': !isActiveRoute(item.to),
+                'bg-gray-100 text-gray-800': isActiveRoute(item.to),
+                'text-gray-600 hover:bg-gray-50 hover:text-gray-800': !isActiveRoute(item.to),
                 'opacity-50 pointer-events-none': sidebarState === 'closed'
               }"
             >
               <component :is="item.icon" class="h-5 w-5 flex-shrink-0" />
               <span 
-                class="ms-3 transition-all duration-200 overflow-hidden whitespace-nowrap text-sm"
+                class="ms-3 transition-all duration-200 overflow-hidden whitespace-nowrap text-sm font-medium"
                 :class="{ 'opacity-0 w-0': sidebarState === 'icon', 'opacity-100': sidebarState === 'full' }"
               >
                 {{ item.label }}
@@ -65,10 +65,10 @@
                 @click="toggleDropdown(item.id)"
                 @mouseenter="(e) => showTooltip(e, item.label)"
                 @mouseleave="hideTooltip"
-                class="flex items-center w-full p-2 rounded-lg transition-colors duration-200 text-sm"
+                class="flex items-center w-full p-2.5 rounded-lg transition-all duration-200 text-sm font-medium group"
                 :class="{ 
-                  'bg-gray-900 dark:bg-gray-700 text-white': isActiveParent(item.children),
-                  'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700': !isActiveParent(item.children)
+                  'bg-gray-100 text-gray-800': isActiveParent(item.children),
+                  'text-gray-600 hover:bg-gray-50 hover:text-gray-800': !isActiveParent(item.children)
                 }"
               >
                 <component :is="item.icon" class="h-5 w-5 flex-shrink-0" />
@@ -91,18 +91,18 @@
                 class="overflow-hidden transition-all duration-300"
                 :class="{ 'max-h-0': !openDropdowns.includes(item.id), 'max-h-96': openDropdowns.includes(item.id) }"
               >
-                <ul class="pl-6 mt-2 space-y-1">
+                <ul class="pl-8 mt-1 space-y-1">
                   <li v-for="child in item.children" :key="child.id" class="relative">
                     <router-link 
                       :to="child.to"
-                      class="flex items-center p-2 rounded-lg transition-colors duration-200 text-sm"
+                      class="flex items-center p-2 rounded-lg transition-all duration-200 text-sm group"
                       :class="{ 
-                        'bg-gray-800 dark:bg-gray-600 text-white': isActiveRoute(child.to),
-                        'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700': !isActiveRoute(child.to)
+                        'bg-gray-200 text-gray-800': isActiveRoute(child.to),
+                        'text-gray-500 hover:bg-gray-50 hover:text-gray-700': !isActiveRoute(child.to)
                       }"
                     >
-                      <component :is="child.icon" class="h-5 w-5 flex-shrink-0" />
-                      <span class="ms-3">{{ child.label }}</span>
+                      <component :is="child.icon" class="h-4 w-4 flex-shrink-0" />
+                      <span class="ms-2">{{ child.label }}</span>
                     </router-link>
                   </li>
                 </ul>
@@ -114,18 +114,18 @@
       
       <!-- Sticky Bottom Section - User Info, Settings & Logout -->
       <div 
-        class="border-t border-gray-200 dark:border-gray-700 p-2 bg-white dark:bg-gray-800 transition-all duration-300"
+        class="border-t border-gray-200 p-3 bg-white transition-all duration-300"
         :class="{ 'opacity-0 pointer-events-none': sidebarState === 'closed' }"
       >
         <!-- User Info (when expanded) -->
         <div 
           v-if="sidebarState === 'full' && user"
-          class="mb-2 px-2 py-1"
+          class="mb-3 px-2 py-2 bg-gray-50 rounded-lg border border-gray-100"
         >
-          <div class="text-sm font-medium text-gray-900 dark:text-white truncate">
+          <div class="text-sm font-semibold text-gray-800 truncate">
             {{ user.name }}
           </div>
-          <div class="text-xs text-gray-500 dark:text-gray-400 truncate">
+          <div class="text-xs text-gray-500 truncate mt-0.5">
             {{ user.email }}
           </div>
         </div>
@@ -135,10 +135,10 @@
           to="/settings"
           @mouseenter="(e) => showTooltip(e, 'Settings')"
           @mouseleave="hideTooltip"
-          class="flex items-center w-full p-2 rounded-lg transition-colors duration-200 text-sm font-medium mb-2"
+          class="flex items-center w-full p-2.5 rounded-lg transition-all duration-200 text-sm font-medium mb-1 group"
           :class="{
-            'bg-gray-900 dark:bg-gray-700 text-white': isActiveRoute('/settings'),
-            'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700': !isActiveRoute('/settings')
+            'bg-gray-100 text-gray-800': isActiveRoute('/settings'),
+            'text-gray-600 hover:bg-gray-50 hover:text-gray-800': !isActiveRoute('/settings')
           }"
         >
           <CogIcon class="h-5 w-5 flex-shrink-0" />
@@ -155,7 +155,7 @@
           @click="$emit('logout')"
           @mouseenter="(e) => showTooltip(e, 'Log Out')"
           @mouseleave="hideTooltip"
-          class="flex items-center w-full p-2 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 text-sm font-medium"
+          class="flex items-center w-full p-2.5 text-gray-600 rounded-lg hover:bg-gray-50 hover:text-gray-800 transition-all duration-200 text-sm font-medium group"
         >
           <ArrowRightOnRectangleIcon class="h-5 w-5 flex-shrink-0" />
           <span 
@@ -175,9 +175,9 @@
         class="fixed left-20 z-[9999] pointer-events-none transition-opacity duration-200"
         :style="{ top: tooltipState.top - 16 + 'px' }"
       >
-        <div class="px-3 py-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg shadow-lg whitespace-nowrap">
+        <div class="px-3 py-2 bg-gray-800 text-white text-xs rounded-lg shadow-lg whitespace-nowrap">
           {{ tooltipState.text }}
-          <div class="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-1 w-2 h-2 bg-gray-900 dark:bg-gray-700 rotate-45"></div>
+          <div class="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-1 w-2 h-2 bg-gray-800 rotate-45"></div>
         </div>
       </div>
     </Teleport>
@@ -314,9 +314,9 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* Custom scrollbar for sidebar */
+/* Custom scrollbar for sidebar - minimalist white theme */
 ::-webkit-scrollbar {
-  width: 4px;
+  width: 3px;
 }
 
 ::-webkit-scrollbar-track {
@@ -324,19 +324,11 @@ onUnmounted(() => {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #e5e7eb;
   border-radius: 2px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
-
-.dark ::-webkit-scrollbar-thumb {
-  background: #4b5563;
-}
-
-.dark ::-webkit-scrollbar-thumb:hover {
-  background: #6b7280;
+  background: #d1d5db;
 }
 </style>

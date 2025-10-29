@@ -24,12 +24,14 @@ const { api, getAuthHeader } = useApiUrl();
         } = states;
 
 
-  const fetchPrograms = async () => {
-      if (programs.value.length > 0) {
-        return;
-      }
+  const fetchPrograms = async (page = 1, filters = {}) => {
     try {
-      const response = await axios.get(`${api}/programs`, getAuthHeader());
+      const params = new URLSearchParams();
+      params.append('page', page);
+
+      if (filters.search) params.append('search', filters.search);
+
+      const response = await axios.get(`${api}/programs?${params.toString()}`, getAuthHeader());
 
       // non-paginated list
       programs.value = response.data.programs || [];
@@ -80,10 +82,8 @@ const { api, getAuthHeader } = useApiUrl();
     const addProgram = async (program) => {
       try {
         const response = await axios.post(`${api}/programs`, program, getAuthHeader());
-        programs.value.push(response.data.program);
         success(response.data.message);
         console.log(response.data.program);
-        fetchPrograms();
       } catch (err) {
         error(err.response.data.message);
         console.error('Error adding program:', err);
@@ -93,10 +93,6 @@ const { api, getAuthHeader } = useApiUrl();
     const updateProgram = async (id, program) => {
       try{
         const response = await axios.put(`${api}/programs/${id}`, program, getAuthHeader());
-        const index = programs.value.findIndex(p => p._id === id);
-        if(index !== -1){
-          programs.value[index] = response.data.program;
-        }
         success(response.data.message);
         console.log(response.data.program);
       }catch(err){
@@ -108,13 +104,8 @@ const { api, getAuthHeader } = useApiUrl();
     const deleteProgram = async (id) => {
         try{
           const response = await axios.delete(`${api}/programs/${id}`, getAuthHeader());
-          const index = programs.value.findIndex(p => p._id === id);
-          if(index !== -1){
-            programs.value.splice(index, 1);
-          }
           success(response.data.message);
           console.log(response.data.program);
-          fetchPrograms();
         }catch(err){
           error(err.response.data.message);
           console.error('Error deleting program:', err);
@@ -122,7 +113,7 @@ const { api, getAuthHeader } = useApiUrl();
       }
 
 
-  
+
     return {
       programs,
 
@@ -131,6 +122,6 @@ const { api, getAuthHeader } = useApiUrl();
       updateProgram,
       deleteProgram,
       getProgram,
-    
+
     };
   });

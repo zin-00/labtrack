@@ -9,9 +9,22 @@ use App\Models\Laboratory;
 use Illuminate\Http\Request;
 
 class LabController extends Controller
-{
+{   
     public function index(Request $request){
-        $laboratories = Laboratory::all();
+        $query = Laboratory::query();
+
+        // Filter by search query (name)
+        if ($request->has('search') && $request->search) {
+            $query->where('name', 'like', '%' . $request->search . '%');
+        }
+
+        // Filter by status
+        if ($request->has('status') && $request->status !== 'all') {
+            $query->where('status', $request->status);
+        }
+
+        $laboratories = $query->get();
+
         return response()->json([
             'laboratories' => $laboratories,
             'message' => 'Laboratories retrieved successfully'

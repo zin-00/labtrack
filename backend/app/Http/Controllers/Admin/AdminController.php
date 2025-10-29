@@ -18,7 +18,24 @@ use Illuminate\Validation\Rule;
 class AdminController extends Controller
 {
     public function index (Request $request){
-        $users = User::orderBy('created_at', 'desc')->paginate(7);
+        $query = User::query();
+
+        // Search filter
+        if($request->has('search') && $request->search){
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', "%$search%")
+                  ->orWhere('email', 'like', "%$search%");
+            });
+        }
+
+        // Status filter
+        if($request->has('status') && $request->status !== 'all'){
+            $query->where('status', $request->status);
+        }
+
+        $users = $query->orderBy('created_at', 'desc')->paginate(7);
+
         return response()->json([
             'users' => $users,
             'message' => 'Users retrieved successfully'

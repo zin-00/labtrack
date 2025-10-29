@@ -14,15 +14,21 @@ export const useAuditLogsStore = defineStore('auditLogs', () => {
         } = toRefs(states)
 
     const {
-        success,
         error
         } = states;
 
-    const getAuditLogs = async (page = 1) => {
+    const getAuditLogs = async (page = 1, filters = {}) => {
         try {
             isLoading.value = true;
 
-            const response  = await axios.get(`${api}/audit-logs?page=${page}`, getAuthHeader());
+            const params = new URLSearchParams();
+            params.append('page', page);
+
+            if (filters.search) params.append('search', filters.search);
+            if (filters.dateFrom) params.append('date_from', filters.dateFrom);
+            if (filters.dateTo) params.append('date_to', filters.dateTo);
+
+            const response = await axios.get(`${api}/audit-logs?${params.toString()}`, getAuthHeader());
             auditLogs.value = response.data.audit_logs.data || [];
             pagination.value = {
                 current_page: response.data.audit_logs.current_page,
@@ -32,7 +38,6 @@ export const useAuditLogsStore = defineStore('auditLogs', () => {
             }
             console.log('Audit Logs data:', auditLogs.value);
             console.log('Pagination data:', pagination.value);
-            success(response.data.message || 'Audit logs fetched successfully!');
         } catch (err) {
             console.error('Error fetching audit logs:', err);
             auditLogs.value = [];

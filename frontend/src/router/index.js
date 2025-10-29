@@ -20,7 +20,6 @@ import Programs from '../pages/settings/academic/Programs.vue'
 import YearLevels from '../pages/settings/academic/YearLevels.vue'
 import BrowserActivity from '../pages/activity/BrowserActivity.vue'
 import ComputerActivity from '../pages/activity/ComputerActivity.vue'
-import HeartBeat from '../pages/activity/HeartBeat.vue'
 import AuditLogs from '../pages/activity/AuditLogs.vue'
 import WorkStationMapping from '../pages/users/WorkStationMapping.vue'
 
@@ -49,7 +48,6 @@ const routes = [
   { path: '/browser-activity',      name: 'browser-activity',   component: BrowserActivity,   meta: { requiresAuth: true }},
   { path: '/computer-activity',     name: 'computer-activity',  component: ComputerActivity,  meta: { requiresAuth: true }},
   { path: '/audit-logs',            name: 'audit-logs',         component: AuditLogs,         meta: { requiresAuth: true }},
-  { path: '/heartbeat',             name: 'heartbeat',          component: HeartBeat,         meta: { requiresAuth: true }},
   { path: '/scan',                  name: 'scan',               component: Scan},
   { path: '/workstation-mapping',   name: 'workstation-mapping',component: WorkStationMapping, meta: { requiresAuth: true }},
 

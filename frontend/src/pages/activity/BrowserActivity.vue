@@ -1,12 +1,14 @@
 <script setup>
-import { toRefs, onMounted, computed, ref } from 'vue';
+import { toRefs, onMounted, ref, watch } from 'vue';
 import AuthenticatedLayout from '../../layouts/auth/AuthenticatedLayout.vue';
 import { useStates } from '../../composable/states';
 import Table from '../../components/table/Table.vue';
 import Modal from '../../components/modal/Modal.vue';
-import { XMarkIcon, ArrowDownTrayIcon } from '@heroicons/vue/24/solid';
+import { XMarkIcon, ArrowDownTrayIcon, FunnelIcon } from '@heroicons/vue/24/outline';
 import { useBrowserActivityStore } from '../../composable/activity/browserActivity';
 import dayjs from 'dayjs';
+import LoaderSpinner from '../../components/spinner/LoaderSpinner.vue';
+import { debounce } from 'lodash-es';
 
 const states = useStates();
 const brows = useBrowserActivityStore();
@@ -30,27 +32,21 @@ const modalBrowser = ref('');
 const modalDuration = ref('');
 const modalDateTime = ref('');
 
-const FilteredActivity = computed(() => {
-    if(!browserActivity.value || !Array.isArray(browserActivity.value)){
-      return [];
-    }
+// Filter state
+const showFilters = ref(false);
 
-    return browserActivity.value.filter((act) => {
-        const matchesSearch =
-          !searchQuery.value ||
-          act.browser_name?.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-          act.title?.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-          act.url?.toLowerCase().includes(searchQuery.value.toLowerCase());
+// Debounced filter function
+const applyFilters = debounce(() => {
+    getBrowserActivity(1, {
+        search: searchQuery.value,
+        dateFrom: dateFrom.value,
+        dateTo: dateTo.value,
+    });
+}, 300);
 
-        const createdAt = new Date(act.created_at);
-        const from = dateFrom.value ? new Date(dateFrom.value) : null;
-        const to = dateTo.value ? new Date(dateTo.value) : null;
-
-        const matchesDate =
-          (!from || createdAt >= from) && (!to || createdAt <= to);
-
-        return matchesSearch && matchesDate;
-      });
+// Watch filters
+watch([searchQuery, dateFrom, dateTo], () => {
+    applyFilters();
 });
 
 const openDetailsModal = (activity) => {
@@ -60,6 +56,14 @@ const openDetailsModal = (activity) => {
     modalDuration.value = activity.duration;
     modalDateTime.value = dayjs(activity.created_at).format('MMM D, YYYY h:mm A');
     showDetailsModal.value = true;
+};
+
+const handlePageChange = (page) => {
+    getBrowserActivity(page, {
+        search: searchQuery.value,
+        dateFrom: dateFrom.value,
+        dateTo: dateTo.value,
+    });
 };
 
 const exportToPDF = async () => {
@@ -79,7 +83,7 @@ const exportToPDF = async () => {
         doc.text(`Generated: ${dayjs().format('MMM D, YYYY h:mm A')}`, pageWidth / 2, 18, { align: 'center' });
 
         // Prepare table data
-        const tableData = FilteredActivity.value.map((activity) => [
+        const tableData = browserActivity.value.map((activity) => [
             activity.ip_address || 'N/A',
             activity.computer_id || 'N/A',
             activity.browser_name || 'N/A',
@@ -127,7 +131,7 @@ const exportToDocx = async () => {
                 shading: { fill: '424242', type: 'clear' }
             }));
 
-        const bodyRows = FilteredActivity.value.map(activity => new TableRow({
+        const bodyRows = browserActivity.value.map(activity => new TableRow({
             children: [
                 new TableCell({ children: [new Paragraph(activity.ip_address || 'N/A')] }),
                 new TableCell({ children: [new Paragraph(activity.computer_id || 'N/A')] }),
@@ -187,131 +191,188 @@ getBrowserActivity();
 
 <template>
   <AuthenticatedLayout>
-    <div class="py-4 max-w-7xl mx-auto sm:px-4 bg-white">
+    <div class="py-4 max-w-7xl mx-auto sm:px-4 bg-gray-50 min-h-screen relative">
+      <LoaderSpinner :isLoading="isLoading" subMessage="Loading browser activity..." />
+      
       <!-- Header -->
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
-        <div>
-          <h2 class="text-2xl text-gray-900">Browser Activity</h2>
-          <p class="mt-1 text-xs text-gray-600">Monitor computer usage and system events</p>
-        </div>
+      <div class="mb-4">
+        <h2 class="text-xl text-gray-900">Browser Activity</h2>
+        <p class="text-xs text-gray-600">Monitor computer usage and browser events</p>
       </div>
 
-      <!-- Filters Panel And Actions -->
-      <div class="mt-4 sm:mt-0 flex flex-col sm:flex-row gap-2 justify-between">
-        <!-- Search and Date Filter -->
-        <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-          <!-- Search -->
-          <div class="flex items-center gap-4">
-            <div class="relative flex-1 max-w-md">
-              <input
-                v-model="searchQuery"
-                type="text"
-                placeholder="Search programs..."
-                class="w-full px-4 py-2 border border-gray-200 rounded-lg text-[10px] focus:border-gray-400 focus:outline-none transition-colors"
-              />
-              <button
-                v-if="searchQuery"
-                @click="searchQuery = ''"
-                class="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
-              >
-                <XMarkIcon class="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-          
-          <!-- Date Filter -->
-          <div class="flex items-center gap-2">
+      <!-- Single Row: Filters and Actions -->
+      <div class="bg-white rounded-lg border border-gray-200 p-3 mb-4">
+        <div class="flex flex-wrap items-center gap-2">
+          <!-- Filter Toggle Button -->
+          <button
+            @click="showFilters = !showFilters"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors"
+            :class="showFilters ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+          >
+            <FunnelIcon class="w-3.5 h-3.5" />
+            Filters
+          </button>
+
+          <!-- Date Filters (Inline when expanded) -->
+          <template v-if="showFilters">
             <input
               type="date"
               v-model="dateFrom"
-              class="px-3 py-2 border border-gray-200 rounded-lg text-[10px] focus:border-gray-400 focus:outline-none"
+              class="px-3 py-1.5 border border-gray-200 rounded-lg text-xs focus:border-gray-400 focus:outline-none"
+              placeholder="From"
             />
-            <span class="text-gray-500 text-[10px]">to</span>
+            <span class="text-gray-400 text-xs">to</span>
             <input
               type="date"
               v-model="dateTo"
-              class="px-3 py-2 border border-gray-200 rounded-lg text-[10px] focus:border-gray-400 focus:outline-none"
+              class="px-3 py-1.5 border border-gray-200 rounded-lg text-xs focus:border-gray-400 focus:outline-none"
+              placeholder="To"
             />
-          </div>
-        </div>
+          </template>
 
-        <!-- Export Buttons -->
-        <div class="flex gap-2">
-          <button
-            @click="exportToPDF"
-            :disabled="FilteredActivity.length === 0"
-            class="flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-[10px] font-medium rounded-lg hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-          >
-            <ArrowDownTrayIcon class="w-4 h-4" />
-            Export PDF
-          </button>
-          <button
-            @click="exportToDocx"
-            :disabled="FilteredActivity.length === 0"
-            class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-[10px] font-medium rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-          >
-            <ArrowDownTrayIcon class="w-4 h-4" />
-            Export DOCX
-          </button>
+          <!-- Search -->
+          <div class="relative flex-1 min-w-[200px]">
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="Search browser, title, URL, IP..."
+              class="w-full px-3 py-1.5 pr-8 border border-gray-200 rounded-lg text-xs focus:border-gray-400 focus:outline-none transition-colors"
+            />
+            <button
+              v-if="searchQuery"
+              @click="searchQuery = ''"
+              class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              <XMarkIcon class="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          <!-- Results Count and Actions -->
+          <div class="flex items-center gap-2 ml-auto">
+            <span class="text-xs text-gray-600">{{ pagination.total || 0 }} activities</span>
+            <button
+              @click="exportToPDF"
+              :disabled="!browserActivity || browserActivity.length === 0"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+            >
+              <ArrowDownTrayIcon class="w-3.5 h-3.5" />
+              PDF
+            </button>
+            <button
+              @click="exportToDocx"
+              :disabled="!browserActivity || browserActivity.length === 0"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+            >
+              <ArrowDownTrayIcon class="w-3.5 h-3.5" />
+              DOCX
+            </button>
+          </div>
         </div>
       </div>
 
-      <!-- Table with correct skeleton columns that match the header structure -->
-      <Table
-        :data="FilteredActivity"
-        :is-loading="isLoading"
-        :pagination="pagination"
-        :mobile-fields="['ip_address', 'computer_id', 'browser_name', 'title', 'url', 'duration', 'created_at']"
-        @page-change="getBrowserActivity">
-        
-        <template #header>
-          <thead class="bg-gray-50">
+      <!-- Table -->
+      <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <Table
+          :data="browserActivity"
+          :is-loading="isLoading"
+          :pagination="pagination"
+          @page-change="handlePageChange">
+          
+          <template #header>
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">IP Address</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Work Station</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Browser</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">URL</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date & Time</th>
+              <th class="px-4 py-2 text-xs font-medium text-gray-600 text-left">IP Address</th>
+              <th class="px-4 py-2 text-xs font-medium text-gray-600 text-left">Work Station</th>
+              <th class="px-4 py-2 text-xs font-medium text-gray-600 text-left">Browser</th>
+              <th class="px-4 py-2 text-xs font-medium text-gray-600 text-left">Title</th>
+              <th class="px-4 py-2 text-xs font-medium text-gray-600 text-left">URL</th>
+              <th class="px-4 py-2 text-xs font-medium text-gray-600 text-left">Duration</th>
+              <th class="px-4 py-2 text-xs font-medium text-gray-600 text-left">Date & Time</th>
             </tr>
-          </thead>
-        </template>
-        
-        <template #default>
-          <tr v-for="activity in FilteredActivity" :key="activity.id" class="bg-white even:bg-gray-50">
-            <td class="px-6 py-4 whitespace-nowrap text-[10px] text-gray-900">{{ activity.ip_address }}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-[10px] text-gray-900">{{ activity.computer_id }}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-[10px] text-gray-900">{{ activity.browser_name }}</td>
-            <td class="px-6 py-4 text-[10px] text-gray-900">
-              <button 
-                @click="openDetailsModal(activity)"
-                class="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer truncate max-w-[150px] block"
-                :title="activity.title"
-              >
-                {{ activity.title }}
-              </button>
-            </td>
-            <td class="px-6 py-4 text-[10px] text-gray-900">
-              <button 
-                @click="openDetailsModal(activity)"
-                class="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer truncate max-w-[200px] block"
-                :title="activity.url"
-              >
-                {{ activity.url }}
-              </button>
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-[10px] text-gray-900">{{ activity.duration }} seconds</td>
-            <td class="px-6 py-4 whitespace-nowrap text-[10px] text-gray-900">{{ dayjs(activity.created_at).format("MMM D, YYYY h:mm A") }}</td>
-          </tr>
-        </template>
-      </Table>
+          </template>
+          
+          <template #default>
+            <tr v-for="activity in browserActivity" :key="activity.id" class="hover:bg-gray-50 transition-colors">
+              <td class="px-4 py-2.5 text-xs text-gray-900">{{ activity.ip_address }}</td>
+              <td class="px-4 py-2.5 text-xs text-gray-900">{{ activity.computer_id }}</td>
+              <td class="px-4 py-2.5 text-xs text-gray-900">
+                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium bg-gray-100 text-gray-700">
+                  {{ activity.browser_name }}
+                </span>
+              </td>
+              <td class="px-4 py-2.5 text-xs text-gray-900 max-w-[200px]">
+                <button 
+                  @click="openDetailsModal(activity)"
+                  class="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer truncate block w-full text-left"
+                  :title="activity.title"
+                >
+                  {{ activity.title }}
+                </button>
+              </td>
+              <td class="px-4 py-2.5 text-xs text-gray-900 max-w-[250px]">
+                <button 
+                  @click="openDetailsModal(activity)"
+                  class="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer truncate block w-full text-left"
+                  :title="activity.url"
+                >
+                  {{ activity.url }}
+                </button>
+              </td>
+              <td class="px-4 py-2.5 text-xs text-gray-900 whitespace-nowrap">{{ activity.duration }} sec</td>
+              <td class="px-4 py-2.5 text-xs text-gray-900 whitespace-nowrap">{{ dayjs(activity.created_at).format("MMM D, YYYY h:mm A") }}</td>
+            </tr>
+          </template>
+        </Table>
+      </div>
+
+      <!-- Mobile View -->
+      <div class="sm:hidden space-y-4 mt-4">
+        <div
+          v-for="activity in browserActivity"
+          :key="activity.id"
+          class="bg-white rounded-lg border border-gray-200 p-4"
+        >
+          <div class="flex items-start justify-between mb-3">
+            <div>
+              <h3 class="text-sm font-medium text-gray-900">{{ activity.ip_address }}</h3>
+              <p class="text-xs text-gray-600 mt-0.5">Station: {{ activity.computer_id }}</p>
+            </div>
+            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium bg-gray-100 text-gray-700">
+              {{ activity.browser_name }}
+            </span>
+          </div>
+          
+          <div class="space-y-2">
+            <div class="text-xs">
+              <span class="text-gray-600">Title:</span>
+              <p class="text-gray-900 mt-1 truncate">{{ activity.title }}</p>
+            </div>
+            <div class="text-xs">
+              <span class="text-gray-600">URL:</span>
+              <p class="text-blue-600 mt-1 truncate">{{ activity.url }}</p>
+            </div>
+            <div class="flex justify-between text-xs">
+              <span class="text-gray-600">Duration:</span>
+              <span class="text-gray-900">{{ activity.duration }} sec</span>
+            </div>
+            <div class="flex justify-between text-xs">
+              <span class="text-gray-600">Date:</span>
+              <span class="text-gray-900">{{ dayjs(activity.created_at).format("MMM D, YYYY h:mm A") }}</span>
+            </div>
+            <button
+              @click="openDetailsModal(activity)"
+              class="w-full mt-3 px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              View Details
+            </button>
+          </div>
+        </div>
+      </div>
 
       <!-- Details Modal -->
       <Modal :show="showDetailsModal" @close="showDetailsModal = false">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-auto relative">
+        <div class="bg-white/95 backdrop-blur-md rounded-lg shadow-xl w-full max-w-2xl mx-auto relative">
           <!-- Modal Header -->
-          <div class="px-6 py-4 border-b border-gray-100">
+          <div class="px-6 py-4 border-b border-gray-200">
             <h3 class="text-lg font-medium text-gray-900">Page Details</h3>
           </div>
 
@@ -320,7 +381,7 @@ getBrowserActivity();
             <!-- Title Section -->
             <div>
               <label class="text-xs font-semibold text-gray-600 uppercase">Title</label>
-              <p class="mt-2 text-[10px] text-gray-900 bg-gray-50 p-3 rounded-lg break-words">{{ modalTitle || 'N/A' }}</p>
+              <p class="mt-2 text-xs text-gray-900 bg-gray-50 p-3 rounded-lg break-words">{{ modalTitle || 'N/A' }}</p>
             </div>
 
             <!-- URL Section -->
@@ -329,7 +390,7 @@ getBrowserActivity();
               <a 
                 :href="modalUrl" 
                 target="_blank"
-                class="mt-2 text-[10px] text-blue-600 hover:text-blue-800 hover:underline bg-gray-50 p-3 rounded-lg block break-all"
+                class="mt-2 text-xs text-blue-600 hover:text-blue-800 hover:underline bg-gray-50 p-3 rounded-lg block break-all"
               >
                 {{ modalUrl || 'N/A' }}
               </a>
@@ -338,27 +399,27 @@ getBrowserActivity();
             <!-- Browser Section -->
             <div>
               <label class="text-xs font-semibold text-gray-600 uppercase">Browser</label>
-              <p class="mt-2 text-[10px] text-gray-900 bg-gray-50 p-3 rounded-lg">{{ modalBrowser || 'N/A' }}</p>
+              <p class="mt-2 text-xs text-gray-900 bg-gray-50 p-3 rounded-lg">{{ modalBrowser || 'N/A' }}</p>
             </div>
 
             <!-- Duration Section -->
             <div>
               <label class="text-xs font-semibold text-gray-600 uppercase">Duration</label>
-              <p class="mt-2 text-[10px] text-gray-900 bg-gray-50 p-3 rounded-lg">{{ modalDuration }} seconds</p>
+              <p class="mt-2 text-xs text-gray-900 bg-gray-50 p-3 rounded-lg">{{ modalDuration }} seconds</p>
             </div>
 
             <!-- Date & Time Section -->
             <div>
               <label class="text-xs font-semibold text-gray-600 uppercase">Date & Time</label>
-              <p class="mt-2 text-[10px] text-gray-900 bg-gray-50 p-3 rounded-lg">{{ modalDateTime || 'N/A' }}</p>
+              <p class="mt-2 text-xs text-gray-900 bg-gray-50 p-3 rounded-lg">{{ modalDateTime || 'N/A' }}</p>
             </div>
           </div>
 
           <!-- Modal Footer -->
-          <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end">
+          <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end">
             <button
               @click="showDetailsModal = false"
-              class="px-4 py-2 text-[10px] font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition"
+              class="px-4 py-2 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
             >
               Close
             </button>

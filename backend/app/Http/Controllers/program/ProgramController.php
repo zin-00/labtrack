@@ -8,9 +8,21 @@ use Illuminate\Http\Request;
 
 class ProgramController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $paginatedProgram = Program::orderBy('created_at', 'desc')->paginate(5);
+        $query = Program::query();
+
+        // Search filter
+        if ($request->has('search') && !empty($request->search)) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('program_name', 'like', "%{$search}%")
+                  ->orWhere('program_code', 'like', "%{$search}%")
+                  ->orWhere('program_description', 'like', "%{$search}%");
+            });
+        }
+
+        $paginatedProgram = $query->orderBy('created_at', 'desc')->paginate(5);
         $allPrograms = Program::all();
 
         return response()->json([

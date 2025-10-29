@@ -8,9 +8,20 @@ use Illuminate\Http\Request;
 
 class SectionController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $sections = Section::orderBy('created_at', 'desc')->paginate(3);
+        $query = Section::query();
+
+        // Search filter
+        if ($request->has('search') && !empty($request->search)) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
+
+        $sections = $query->orderBy('created_at', 'desc')->paginate(7);
         $secNotPaginated = Section::all();
 
         return response()->json([

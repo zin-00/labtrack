@@ -11,13 +11,19 @@ export const useBrowserActivityStore = defineStore('browserActivity', () => {
         pagination
         } = toRefs(states);
     const {
-        success,
         error
        } = states
 
-    const getBrowserActivity = async (page = 1) => {
+    const getBrowserActivity = async (page = 1, filters = {}) => {
         try {
-            const response = await axios.get(`${api}/browser-activities?page=${page}`, getAuthHeader());
+            const params = new URLSearchParams();
+            params.append('page', page);
+
+            if (filters.search) params.append('search', filters.search);
+            if (filters.dateFrom) params.append('date_from', filters.dateFrom);
+            if (filters.dateTo) params.append('date_to', filters.dateTo);
+
+            const response = await axios.get(`${api}/browser-activities?${params.toString()}`, getAuthHeader());
             browserActivity.value = response.data.activities.data || [];
             pagination.value = {
                 current_page: response.data.activities.current_page,
@@ -26,7 +32,6 @@ export const useBrowserActivityStore = defineStore('browserActivity', () => {
                 total: response.data.activities.total
             }
             console.log('Browser Activity data:', browserActivity.value);
-            success(response.data.message || 'Browser activity fetched successfully!');
         } catch (err) {
             console.error('Error fetching browser activity:', err);
             browserActivity.value = [];

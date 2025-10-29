@@ -1,37 +1,41 @@
 <script setup>
-import { ref, computed, reactive, onMounted, toRefs } from 'vue';
+import { ref, computed, reactive, onMounted, toRefs, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import AuthenticatedLayout from '../../layouts/auth/AuthenticatedLayout.vue';
-import Button from '../../components/button/Button.vue';
-import {LoopingRhombusesSpinner} from 'epic-spinners';
-import { FolderDownIcon, FolderUpIcon,
-        RefreshCcwIcon,
-        UserRoundPlusIcon,
-        XIcon,
-    } from 'lucide-vue-next';
+import Table from '../../components/table/Table.vue';
+import Modal from '../../components/modal/Modal.vue';
+import TextInput from '../../components/input/TextInput.vue';
+import LoaderSpinner from '../../components/spinner/LoaderSpinner.vue';
 import { 
     TrashIcon, 
     PencilIcon, 
-    EyeIcon
+    EyeIcon,
+    ArrowDownTrayIcon,
+    ArrowUpTrayIcon,
+    ArrowPathIcon,
+    UserPlusIcon,
+    XMarkIcon
 } from '@heroicons/vue/24/outline';
-import Table from '../../components/table/Table.vue';
 import { useToast } from 'vue-toastification';
-import { watch } from 'vue';
-import Modal from '../../components/modal/Modal.vue';
-import TextInput from '../../components/input/TextInput.vue';
-import {useExcelStore} from '../../composable/excel';
+import { useExcelStore } from '../../composable/excel';
 import { useStudentStore } from '../../composable/users/students/student';
 import { useProgramStore } from '../../composable/program';
 import { useStates } from '../../composable/states';
 import { useSectionStore } from '../../composable/section';
 import { useYearLevelStore } from '../../composable/yearlevel';
-import LoaderSpinner from '../../components/spinner/LoaderSpinner.vue';
+import { debounce } from 'lodash-es';
 
-const lvl = useYearLevelStore();
+// Store initialization
+const toast = useToast();
+const router = useRouter();
 const states = useStates();
-const section = useSectionStore();
 const auth = useStudentStore();
+const lvl = useYearLevelStore();
+const section = useSectionStore();
+const prog = useProgramStore();
+const xl = useExcelStore();
 
+// Reactive state
 const {
     secNotPaginated,
     yearLevelsNotPaginated,
@@ -48,99 +52,81 @@ const {
     selectedStatus,
     selectedSection,
     isLoading,
+} = toRefs(states);
 
-    // Data Arrays
-
-    } = toRefs(states);
-
-const {
-    getSections,
-    } = section;
-
-const {
-    getYearLevels,
-    } = lvl;
-const {
-    ModalState
-    } = states;
+// Actions
+const { getSections } = section;
+const { getYearLevels } = lvl;
+const { ModalState } = states;
 const {
     fetchStudents,
     storeStudent,
     updateStudent,
     deleteStudent,
-    } = auth;
+} = auth;
 
-const toast = useToast();
-const router = useRouter();
-const prog = useProgramStore();
-const xl = useExcelStore();
-
+// Form data
 const studentData = reactive({
-        student_id: '',
-        first_name: '',
-        middle_name: '',
-        last_name: '',
-        email: '',
-        rfid_uid: '',
-        program_id: 1,
-        year_level_id: 1,
-        section_id: 1,
-        status: '',
+    student_id: '',
+    first_name: '',
+    middle_name: '',
+    last_name: '',
+    email: '',
+    rfid_uid: '',
+    program_id: 1,
+    year_level_id: 1,
+    section_id: 1,
+    status: '',
 });
 
+// Remove client-side filtering - now handled by backend
 const filteredStudents = computed(() => {
-    if (!students.value || !Array.isArray(students.value)) {
-        return [];
-    }
-
-    return students.value.filter((student) => {
-        const statusMatch =
-            selectedStatus.value === 'all' || student.status === selectedStatus.value;
-        const programMatch =
-            selectedProgram.value === 'all' || student.program_id === parseInt(selectedProgram.value);
-        const yearLevelMatch =
-            selectedYearLevel.value === 'all' || student.year_level_id === parseInt(selectedYearLevel.value);
-        const sectionMatch =
-            selectedSection.value === 'all' || student.section_id === parseInt(selectedSection.value);
-        const searchmatch =
-            searchQuery.value === '' ||
-            student.first_name?.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-            student.last_name?.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-            student.student_id?.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-            student.email?.toLowerCase().includes(searchQuery.value.toLowerCase());
-
-        return statusMatch && programMatch && yearLevelMatch && searchmatch && sectionMatch;
-    });
+    return students.value || [];
 });
 
+// Debounced function to apply filters
+const applyFilters = debounce((page = 1) => {
+    fetchStudents(page, {
+        search: searchQuery.value,
+        program_id: selectedProgram.value,
+        year_level_id: selectedYearLevel.value,
+        section_id: selectedSection.value,
+        status: selectedStatus.value
+    });
+}, 300);
+
+// Watch for filter changes
+watch([searchQuery, selectedProgram, selectedYearLevel, selectedSection, selectedStatus], () => {
+    applyFilters(1); // Reset to page 1 when filters change
+});
+
+// Methods
 const handleView = (user) => {
     console.log('View user:', user);
     toast.success('User viewed successfully!');
 };
 
 const getStudents = async (page = 1) => {
-    try{
-        console.log('Fetching students...'); // Debug log
-        await fetchStudents(page);
-        console.log('Students fetched:', students.value); // Debug log
-    }catch(error){
+    try {
+        await applyFilters(page);
+    } catch (error) {
         toast.error('Failed to fetch students.');
         console.error(error);
     }
-}
+};
 
 const saveStudent = async () => {
-    try{
-      if(selectedUser.value){
-        await updateStudent(selectedUser.value.id, studentData);
-        ModalState(false);
-        clearForm();
-      }else{
-        await storeStudent(studentData);
-        ModalState(false);
-      }
-      await fetchStudents();
-    }catch(error){
+    try {
+        if (selectedUser.value) {
+            await updateStudent(selectedUser.value.id, studentData);
+            ModalState(false);
+            clearForm();
+        } else {
+            await storeStudent(studentData);
+            ModalState(false);
+        }
+        applyFilters(pagination.value.current_page); // Refresh with current filters and page
+    } catch (error) {
         toast.error('Failed to add user.');
         console.error(error);
     }
@@ -155,31 +141,32 @@ const clearForm = () => {
     studentData.rfid_uid = '';
     studentData.program_id = 1;
     studentData.status = '';
-}
+};
 
 const deleteStudent_func = async () => {
     try {
         await deleteStudent(selectedUser.value.id);
         isConfirmationModalOpen.value = false;
+        applyFilters(pagination.value.current_page); // Refresh with current filters and page
     } catch (error) {
         console.error('Error deleting student:', error);
         toast.error('Failed to delete student.');
     }
-}
+};
 
 const editStudent = (student) => {
-  selectedUser.value = student;
-  Object.assign(studentData, {
-    student_id: student.student_id?.toString() ?? '',
-    first_name: student.first_name ?? '',
-    middle_name: student.middle_name ?? '',
-    last_name: student.last_name ?? '',
-    email: student.email ?? '',
-    rfid_uid: student.rfid_uid?.toString() ?? '',
-    program_id: student.program_id ?? 1,
-    status: student.status ?? 'active',
-  });
-  modalState.value = true;
+    selectedUser.value = student;
+    Object.assign(studentData, {
+        student_id: student.student_id?.toString() ?? '',
+        first_name: student.first_name ?? '',
+        middle_name: student.middle_name ?? '',
+        last_name: student.last_name ?? '',
+        email: student.email ?? '',
+        rfid_uid: student.rfid_uid?.toString() ?? '',
+        program_id: student.program_id ?? 1,
+        status: student.status ?? 'active',
+    });
+    modalState.value = true;
 }; 
 
 const openAddModal = () => {
@@ -197,260 +184,272 @@ const openAddModal = () => {
         status: 'active',
     });
     modalState.value = true;
-}
+};
 
 const open_delete_modal = (student) => {
     selectedUser.value = student;
     isConfirmationModalOpen.value = true;
-}
-
-const refreshData = () => {
-    router.go(0);
 };
 
-// Add debugging watcher
-watch(students, (newVal) => {
-    console.log('Students changed:', newVal);
-}, { deep: true });
+const refreshData = () => {
+    applyFilters(pagination.value.current_page);
+};
 
+// Lifecycle
 onMounted(async () => {
-    console.log('Component mounted, starting data fetch...');
-    console.log('Filtered students:',filteredStudents.length);
     try {
-        await getStudents();
+        await applyFilters(1);
         await getSections();
         await getYearLevels();
         await prog.fetchPrograms();
-        console.log('All data fetched successfully');
     } catch (error) {
         console.error('Error in onMounted:', error);
     }
 });
 </script>
+
 <template>
     <AuthenticatedLayout>
-            <div class="py-4 max-w-7xl mx-auto sm:px-4 bg-white min-h-screen relative">
-             <LoaderSpinner :is-loading="isLoading" subMessage="Please wait while we fetch your data" />
-                <div>
-                    <h2 class="text-2xl text-gray-900">Student Management</h2>
-                    <p class="mt-1 text-xs text-gray-600">
-                        Manage student records with full CRUD operations and bulk import via Excel file.
-                    </p>
-                </div>
-                                
-            <div class="flex flex-wrap items-center justify-between gap-3 mb-4 pt-5">
-                <!-- Left: Search & Filters -->
-                <div class="flex flex-wrap gap-2 items-center">
-                    <!-- Search Box -->
-                    <div class="relative">
-                        <input
-                            v-model="searchQuery"
-                            type="text"
-                            placeholder="Search globally..."
-                            class="w-64 border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
-                        >
-                        <button
-                            v-if="searchQuery"
-                            @click="searchQuery = ''"
-                            class="absolute right-2 top-2 text-gray-400 hover:text-gray-600"
-                        >
-                            <XIcon :stroke-width="1.50" class="w-4 h-4" />
-                        </button>
-                    </div>
-
-                    <!-- Status Filter -->
-                    <select
-                        v-model="selectedStatus"
-                        class="border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
-                        >
-                        <option value="all">All Status</option>
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
-                        <option value="restricted">Restricted</option>
-                    </select>
-
-                    <!-- Program Filter -->
-                    <select
-                        v-model="selectedProgram"
-                        class="border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
-                        >
-                        <option value="all">All Programs</option>
-                        <option 
-                            v-for="program in programs"
-                            :key="program.id" 
-                            :value="program.id">
-                        {{ program.program_code }}
-                    </option>
-                    </select>
-
-                     <!-- Year Level Filter - FIX 3: Fixed the v-model binding -->
-                    <select
-                        v-model="selectedYearLevel"
-                        class="border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
-                        >
-                        <option value="all">All Year Levels</option>
-                        <option 
-                            v-for="yearLevel in yearLevelsNotPaginated"
-                            :key="yearLevel.id" 
-                            :value="yearLevel.id">
-                        {{ yearLevel.name }}
-                    </option>
-                    </select>
-
-                     <!-- Section Filter -->
-                    <select
-                        v-model="selectedSection"
-                        class="border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
-                        >
-                        <option value="all">All Section</option>
-                        <option v-for="section in secNotPaginated"
-                            :key="section.id" 
-                            :value="section.id">
-                        {{ section.name }}
-                    </option>
-                    </select>
-                </div>
-
-                <!-- Right: Action Buttons -->
-                <div class="flex gap-2">
-                    <Button
-                        title="Refresh"
-                        @click="refreshData"
-                        class="p-2 text-white  bg-gray-800 hover:bg-gray-700  rounded-md transition duration-200"
-                        >
-                        <RefreshCcwIcon :stroke-width="1.50" class="h-5 w-5" />
-                    </Button>
-
-                    <Button
-                        @click="openAddModal"
-                        title="Add User"
-                        class="p-2  text-white  bg-gray-800 hover:bg-gray-700 rounded-md transition duration-200"
-                        >
-                        <UserRoundPlusIcon :stroke-width="1.50" class="h-5 w-5" />
-                    </Button>
-
-                    <Button
-                        @click="xl.isImportModalOpen = true"
-                        title="Import Users"
-                        class="p-2  text-white  bg-gray-800 hover:bg-gray-700 rounded-md transition duration-200"
-                        >
-                        <FolderDownIcon :stroke-width="1.50" class="h-5 w-5" />
-                    </Button>
-                    <Button class="p-2 text-white bg-gray-800 hover:bg-gray-700 rounded-md transition duration-200">
-                        <FolderUpIcon :stroke-width="1.50" class="h-5 w-5" />
-                    </Button>
-                </div>
-            </div>
-
-          <div class="mt-4 relative min-h-64">
+        <div class="py-4 max-w-7xl mx-auto sm:px-4 bg-white min-h-screen relative">
+            <LoaderSpinner :is-loading="isLoading" subMessage="Please wait while we fetch your data" />
             
-            <Table
-                :users="filteredStudents" 
-                :pagination="pagination"
-                :loading="isLoading"
-                @edit="editStudent"
-                @delete="open_delete_modal"
-                @view="handleView"
-                @page-change="getStudents"
-                >
-                <template #header>
-                    <tr>
-                        <th class="px-3 py-2 text-xs font-medium text-gray-600 text-left cursor-pointer hover:bg-gray-100 transition-colors">Student ID</th>
-                        <th class="px-3 py-2 text-xs font-medium text-gray-600 text-left cursor-pointer hover:bg-gray-100 transition-colors">Name</th>
-                        <th class="px-3 py-2 text-xs font-medium text-gray-600 text-left cursor-pointer hover:bg-gray-100 transition-colors">Email</th>
-                        <th class="px-3 py-2 text-xs font-medium text-gray-600 text-left cursor-pointer hover:bg-gray-100 transition-colors">Section</th>
-                        <th class="px-3 py-2 text-xs font-medium text-gray-600 text-left cursor-pointer hover:bg-gray-100 transition-colors">Level</th>
-                        <th class="px-3 py-2 text-xs font-medium text-gray-600 text-left cursor-pointer hover:bg-gray-100 transition-colors">Program</th>
-                        <th class="px-3 py-2 text-xs font-medium text-gray-600 text-left cursor-pointer hover:bg-gray-100 transition-colors">Status</th>
-                        <th class="px-3 py-2 text-xs font-medium text-gray-600 text-center w-20">Actions</th>
-                    </tr>
-                </template>
-                <template #default>
-                    <tr v-for="student in filteredStudents" :key="student.id" class="hover:bg-gray-50">
-                        <td class="px-6 py-4 text-xs text-gray-900">{{ student.student_id }}</td>
-                        <td class="px-6 py-4 text-xs text-gray-900">{{ student.first_name }} {{ student.last_name }}</td>
-                        <td class="px-3 py-2 text-sm">
-                            <a
-                                v-if="student.email"
-                                :href="`mailto:${student.email}`"
-                                class="text-blue-600 hover:underline"
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+                <!-- Header -->
+                <div class="mb-4">
+                    <h2 class="text-xl font-medium text-gray-900">Student Management</h2>
+                    <p class="mt-1 text-xs text-gray-500">Manage student records with full CRUD operations and bulk import</p>
+                </div>
+
+                <!-- Filters and Actions -->
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <!-- Left: Search & Filters -->
+                        <div class="flex flex-wrap gap-2 items-center">
+                            <!-- Search Box -->
+                            <div class="relative">
+                                <input
+                                    v-model="searchQuery"
+                                    type="text"
+                                    placeholder="Search..."
+                                    class="w-52 border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:border-gray-400 focus:ring-1 focus:ring-gray-200 transition"
+                                />
+                                <button
+                                    v-if="searchQuery"
+                                    @click="searchQuery = ''"
+                                    class="absolute right-2 top-2 text-gray-400 hover:text-gray-600"
+                                >
+                                    <XMarkIcon class="w-4 h-4" />
+                                </button>
+                            </div>
+
+                            <!-- Status Filter -->
+                            <select
+                                v-model="selectedStatus"
+                                class="border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:border-gray-400 focus:ring-1 focus:ring-gray-200 transition bg-white"
                             >
-                                {{ student.email }}
-                            </a>
-                            <span v-else class="text-gray-400">—</span>
-                        </td>
-                        <td class="px-6 py-4 text-xs text-gray-900">{{ student.section?.name }}</td>
-                        <td class="px-6 py-4 text-xs text-gray-900">{{ student.year_level?.name }}</td>
-                        <td class="px-6 py-4 text-xs text-gray-900">{{ student.program?.program_code }}</td>
-                        <td class="px-6 py-4 text-xs text-gray-900">{{ student.status }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-center">
-                            <div class="flex items-center justify-center gap-2">
-                                <button @click="handleView(student)" class="text-gray-400 hover:text-gray-600">
-                                    <EyeIcon class="w-4 h-4" />
-                                </button>
-                                <button @click="editStudent(student)" class="text-gray-400 hover:text-black">
-                                    <PencilIcon class="w-4 h-4" />
-                                </button>
-                                <button @click="open_delete_modal(student)" class="text-gray-400 hover:text-gray-600">
-                                    <TrashIcon class="w-4 h-4" />
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                </template>
-            </Table>        
-            </div>
-               <!-- Delete Confirmation Modal -->
+                                <option value="all">All Status</option>
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                                <option value="restricted">Restricted</option>
+                            </select>
+
+                            <!-- Program Filter -->
+                            <select
+                                v-model="selectedProgram"
+                                class="border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:border-gray-400 focus:ring-1 focus:ring-gray-200 transition bg-white"
+                            >
+                                <option value="all">All Programs</option>
+                                <option 
+                                    v-for="program in programs"
+                                    :key="program.id" 
+                                    :value="program.id"
+                                >
+                                    {{ program.program_code }}
+                                </option>
+                            </select>
+
+                            <!-- Year Level Filter -->
+                            <select
+                                v-model="selectedYearLevel"
+                                class="border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:border-gray-400 focus:ring-1 focus:ring-gray-200 transition bg-white"
+                            >
+                                <option value="all">All Year Levels</option>
+                                <option 
+                                    v-for="yearLevel in yearLevelsNotPaginated"
+                                    :key="yearLevel.id" 
+                                    :value="yearLevel.id"
+                                >
+                                    {{ yearLevel.name }}
+                                </option>
+                            </select>
+
+                            <!-- Section Filter -->
+                            <select
+                                v-model="selectedSection"
+                                class="border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:border-gray-400 focus:ring-1 focus:ring-gray-200 transition bg-white"
+                            >
+                                <option value="all">All Sections</option>
+                                <option 
+                                    v-for="section in secNotPaginated"
+                                    :key="section.id" 
+                                    :value="section.id"
+                                >
+                                    {{ section.name }}
+                                </option>
+                            </select>
+                        </div>
+
+                        <!-- Right: Action Buttons -->
+                        <div class="flex gap-2">
+                            <button
+                                @click="refreshData"
+                                title="Refresh"
+                                class="p-2 text-gray-600 bg-white border border-gray-300 hover:bg-gray-50 rounded-md transition"
+                            >
+                                <ArrowPathIcon class="h-4 w-4" />
+                            </button>
+
+                            <button
+                                @click="openAddModal"
+                                title="Add Student"
+                                class="p-2 text-gray-600 bg-white border border-gray-300 hover:bg-gray-50 rounded-md transition"
+                            >
+                                <UserPlusIcon class="h-4 w-4" />
+                            </button>
+
+                            <button
+                                @click="xl.isImportModalOpen = true"
+                                title="Import"
+                                class="p-2 text-gray-600 bg-white border border-gray-300 hover:bg-gray-50 rounded-md transition"
+                            >
+                                <ArrowDownTrayIcon class="h-4 w-4" />
+                            </button>
+
+                            <button
+                                title="Export"
+                                class="p-2 text-gray-600 bg-white border border-gray-300 hover:bg-gray-50 rounded-md transition"
+                            >
+                                <ArrowUpTrayIcon class="h-4 w-4" />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Table -->
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                    <Table
+                        :users="filteredStudents" 
+                        :pagination="pagination"
+                        :loading="isLoading"
+                        @edit="editStudent"
+                        @delete="open_delete_modal"
+                        @view="handleView"
+                        @page-change="getStudents"
+                    >
+                        <template #header>
+                            <tr class="bg-gray-50">
+                                <th class="px-4 py-2.5 text-xs font-medium text-gray-600 text-left">Student ID</th>
+                                <th class="px-4 py-2.5 text-xs font-medium text-gray-600 text-left">Name</th>
+                                <th class="px-4 py-2.5 text-xs font-medium text-gray-600 text-left">Email</th>
+                                <th class="px-4 py-2.5 text-xs font-medium text-gray-600 text-left">Section</th>
+                                <th class="px-4 py-2.5 text-xs font-medium text-gray-600 text-left">Level</th>
+                                <th class="px-4 py-2.5 text-xs font-medium text-gray-600 text-left">Program</th>
+                                <th class="px-4 py-2.5 text-xs font-medium text-gray-600 text-left">Status</th>
+                                <th class="px-4 py-2.5 text-xs font-medium text-gray-600 text-center">Actions</th>
+                            </tr>
+                        </template>
+                        <template #default>
+                            <tr v-for="student in filteredStudents" :key="student.id" class="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                                <td class="px-4 py-3 text-xs text-gray-900">{{ student.student_id }}</td>
+                                <td class="px-4 py-3 text-xs text-gray-900">{{ student.first_name }} {{ student.last_name }}</td>
+                                <td class="px-4 py-3 text-xs">
+                                    <a
+                                        v-if="student.email"
+                                        :href="`mailto:${student.email}`"
+                                        class="text-gray-700 hover:text-gray-900 hover:underline"
+                                    >
+                                        {{ student.email }}
+                                    </a>
+                                    <span v-else class="text-gray-400">N/A</span>
+                                </td>
+                                <td class="px-4 py-3 text-xs text-gray-600">{{ student.section?.name }}</td>
+                                <td class="px-4 py-3 text-xs text-gray-600">{{ student.year_level?.name }}</td>
+                                <td class="px-4 py-3 text-xs text-gray-600">{{ student.program?.program_code }}</td>
+                                <td class="px-4 py-3 text-xs">
+                                    <span 
+                                        class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border"
+                                        :class="{
+                                            'bg-green-50 text-green-700 border-green-200': student.status === 'active',
+                                            'bg-red-50 text-red-700 border-red-200': student.status === 'inactive',
+                                            'bg-orange-50 text-orange-700 border-orange-200': student.status === 'restricted',
+                                            'bg-gray-50 text-gray-700 border-gray-200': !student.status
+                                        }"
+                                    >
+                                        {{ student.status || 'N/A' }}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap text-center">
+                                    <div class="flex items-center justify-center gap-1">
+                                        <button @click="handleView(student)" class="p-1 text-gray-400 hover:text-gray-600 rounded transition">
+                                            <EyeIcon class="w-4 h-4" />
+                                        </button>
+                                        <button @click="editStudent(student)" class="p-1 text-gray-400 hover:text-gray-700 rounded transition">
+                                            <PencilIcon class="w-4 h-4" />
+                                        </button>
+                                        <button @click="open_delete_modal(student)" class="p-1 text-red-400 hover:text-red-600 rounded transition">
+                                            <TrashIcon class="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </template>
+                    </Table>        
+                </div>
+
+                <!-- Delete Confirmation Modal -->
                 <Modal :show="isConfirmationModalOpen" @close="isConfirmationModalOpen = false">
-                    <div class="relative inset-0 flex items-center justify-center p-4 z-50">
-                        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-auto relative border border-gray-200">
-                            <!-- Header -->
-                            <div class="px-6 py-4 border-b border-gray-200">
-                                <div class="flex items-center gap-4">
-                                    <div class="flex-shrink-0 w-12 h-12 bg-red-50 border border-red-200 rounded-full flex items-center justify-center">
-                                        <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M12 9v2m0 4h.01M12 19c3.866 0 7-3.134 7-7S15.866 5 12 5 5 8.134 5 12s3.134 7 7 7z"/>
-                                        </svg>
-                                    </div>
-                                    <div>
-                                        <h2 class="text-lg font-semibold text-gray-900">Confirm Deletion</h2>
-                                        <p class="text-sm text-gray-500">This action cannot be undone</p>
-                                    </div>
+                    <div class="relative bg-white rounded-lg shadow-xl w-full max-w-md mx-auto">
+                        <!-- Header -->
+                        <div class="px-6 py-4 border-b border-gray-200">
+                            <div class="flex items-center gap-3">
+                                <div class="flex-shrink-0 w-10 h-10 bg-red-50 rounded-full flex items-center justify-center">
+                                    <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                    </svg>
                                 </div>
+                                <h3 class="text-base font-semibold text-gray-900">Confirm Deletion</h3>
                             </div>
+                        </div>
 
-                            <!-- Content -->
-                            <div class="px-6 py-4">
-                                <p class="text-gray-700 leading-relaxed">
-                                    Are you sure you want to delete this student? All associated data and records will be permanently removed from the system.
-                                </p>
-                            </div>
+                        <!-- Content -->
+                        <div class="px-6 py-4">
+                            <p class="text-sm text-gray-600">
+                                Are you sure you want to delete this student? All associated data will be permanently removed.
+                            </p>
+                        </div>
 
-                            <!-- Footer -->
-                            <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-xl">
-                                <div class="flex justify-end gap-3">
-                                    <button
-                                        @click="isConfirmationModalOpen = false"
-                                        class="px-4 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all font-medium"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        @click="deleteStudent_func"
-                                        class="px-4 py-2.5 bg-black text-white rounded-lg hover:bg-gray-900 transition-all font-medium shadow-sm"
-                                    >
-                                        Delete Student
-                                    </button>
-                                </div>
-                            </div>
+                        <!-- Footer -->
+                        <div class="px-6 py-3 bg-gray-50 border-t border-gray-200 flex justify-end gap-2">
+                            <button
+                                @click="isConfirmationModalOpen = false"
+                                class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                @click="deleteStudent_func"
+                                class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition"
+                            >
+                                Delete
+                            </button>
                         </div>
                     </div>
                 </Modal>
 
                 <!-- Import Modal -->
                <Modal :show="xl.isImportModalOpen" @close="xl.isImportModalOpen = false">
-                    <div class="bg-white p-8 rounded-lg max-w-md mx-auto relative">
+                    <div class="relative bg-white p-8 rounded-lg max-w-md mx-auto relative">
                         <h2 class="text-lg font-medium mb-6">Import Students</h2>
                         
                         <form @submit.prevent="xl.importStudents" class="space-y-4">
@@ -478,11 +477,11 @@ onMounted(async () => {
                                 </svg>
                                 <p class="text-sm text-gray-600 mb-1">Drop your file here or</p>
                                 <button
-                                type="button"
-                                @click="$refs.fileInput.click()"
-                                class="text-sm text-black hover:underline"
+                                    type="button"
+                                    @click="$refs.fileInput.click()"
+                                    class="text-sm text-gray-700 hover:underline font-medium"
                                 >
-                                browse files
+                                    browse files
                                 </button>
                             </div>
                             
@@ -522,9 +521,9 @@ onMounted(async () => {
                             Cancel
                             </button>
                             <button
-                            type="submit"
-                            :disabled="xl.isLoading"
-                            class="flex-1 px-4 py-2 bg-black text-white text-sm rounded hover:bg-gray-800"
+                                type="submit"
+                                :disabled="xl.isLoading"
+                                class="flex-1 px-4 py-2 bg-gray-700 text-white text-sm rounded hover:bg-gray-600 transition"
                             >
                                 <span v-if="!xl.isLoading">Import</span>
                                 <span v-else>Importing...</span>
@@ -545,7 +544,7 @@ onMounted(async () => {
     leave-from-class="opacity-100"
     leave-to-class="opacity-0"
 >
-    <div v-if="modalState" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div v-if="modalState" class="fixed inset-0 bg-white/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
         <Transition
             enter-active-class="ease-out duration-300"
             enter-from-class="opacity-0 scale-95"
@@ -554,9 +553,9 @@ onMounted(async () => {
             leave-from-class="opacity-100 scale-100"
             leave-to-class="opacity-0 scale-95"
         >
-            <div v-if="modalState" class="bg-white rounded-xl shadow-2xl w-full max-w-6xl relative border border-gray-200">
+            <div v-if="modalState" class="bg-white/95 backdrop-blur-md rounded-xl shadow-2xl w-full max-w-6xl relative border border-gray-200/50">
                 <!-- Header -->
-                <div class="px-8 py-5 border-b border-gray-200 bg-gray-50 rounded-t-xl">
+                <div class="px-8 py-5 border-b border-gray-200/50 bg-white/60 backdrop-blur-sm rounded-t-xl">
                     <div class="flex items-center justify-between">
                         <h2 class="text-2xl font-semibold text-gray-900">
                             {{ selectedUser ? 'Edit Student' : 'Add New Student' }}
@@ -581,7 +580,7 @@ onMounted(async () => {
                             <TextInput
                                 v-model="studentData.student_id"
                                 type="text"
-                                class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-black transition-all bg-white text-gray-900"
+                                class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-all bg-white text-gray-900"
                                 placeholder="Enter student ID"
                             />
                         </div>
@@ -592,7 +591,7 @@ onMounted(async () => {
                             <TextInput
                                 v-model="studentData.rfid_uid"
                                 type="text"
-                                class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-black transition-all bg-white text-gray-900"
+                                class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-all bg-white text-gray-900"
                                 placeholder="Scan or enter RFID"
                             />
                         </div>
@@ -603,7 +602,7 @@ onMounted(async () => {
                             <TextInput
                                 v-model="studentData.first_name"
                                 type="text"
-                                class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-black transition-all bg-white text-gray-900"
+                                class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-all bg-white text-gray-900"
                                 placeholder="Enter first name"
                             />
                         </div>
@@ -614,7 +613,7 @@ onMounted(async () => {
                             <TextInput
                                 v-model="studentData.middle_name"
                                 type="text"
-                                class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-black transition-all bg-white text-gray-900"
+                                class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-all bg-white text-gray-900"
                                 placeholder="Enter middle name (optional)"
                             />
                         </div>
@@ -625,7 +624,7 @@ onMounted(async () => {
                             <TextInput
                                 v-model="studentData.last_name"
                                 type="text"
-                                class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-black transition-all bg-white text-gray-900"
+                                class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-all bg-white text-gray-900"
                                 placeholder="Enter last name"
                             />
                         </div>
@@ -636,7 +635,7 @@ onMounted(async () => {
                             <TextInput
                                 v-model="studentData.email"
                                 type="email"
-                                class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-black transition-all bg-white text-gray-900"
+                                class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-all bg-white text-gray-900"
                                 placeholder="Enter email address"
                             />
                         </div>
@@ -646,7 +645,7 @@ onMounted(async () => {
                             <label class="block text-sm font-medium text-gray-700">Program</label>
                             <select
                                 v-model="studentData.program_id"
-                                class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-black transition-all bg-white text-gray-900"
+                                class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-all bg-white text-gray-900"
                             >
                                 <option disabled value="">-- Select Program --</option>
                                 <option 
@@ -667,7 +666,7 @@ onMounted(async () => {
                             <label class="block text-sm font-medium text-gray-700">Year Level</label>
                             <select
                                 v-model="studentData.year_level"
-                                class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-black transition-all bg-white text-gray-900"
+                                class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-all bg-white text-gray-900"
                             >
                                 <option disabled value="">-- Select Year Level --</option>
                                 <option value="1st year">1st Year</option>
@@ -682,7 +681,7 @@ onMounted(async () => {
                             <label class="block text-sm font-medium text-gray-700">Section</label>
                             <select
                                 v-model="studentData.section_id"
-                                class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-black transition-all bg-white text-gray-900"
+                                class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-all bg-white text-gray-900"
                             >
                                 <option disabled value="">-- Select Section --</option>
                                 <option 
@@ -703,7 +702,7 @@ onMounted(async () => {
                             <label class="block text-sm font-medium text-gray-700">Status</label>
                             <select
                                 v-model="studentData.status"
-                                class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-black transition-all bg-white text-gray-900"
+                                class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-all bg-white text-gray-900"
                             >
                                 <option disabled value="">-- Select Status --</option>
                                 <option value="active">Active</option>
@@ -715,7 +714,7 @@ onMounted(async () => {
                 </div>
 
                 <!-- Footer -->
-                <div class="px-8 py-4 border-t border-gray-200 bg-gray-50 rounded-b-xl">
+                <div class="px-8 py-4 border-t border-gray-200/50 bg-white/60 backdrop-blur-sm rounded-b-xl">
                     <div class="flex justify-end gap-3">
                         <button
                             @click="ModalState(false)"
@@ -725,7 +724,7 @@ onMounted(async () => {
                         </button>
                         <button
                             @click="saveStudent"
-                            class="px-6 py-2.5 bg-black text-white rounded-lg hover:bg-gray-900 transition-all font-medium shadow-sm"
+                            class="px-6 py-2.5 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-all font-medium"
                         >
                             {{ selectedUser ? 'Update Student' : 'Save Student' }}
                         </button>
@@ -735,6 +734,7 @@ onMounted(async () => {
         </Transition>
     </div>
 </Transition>
-            </div> 
+            </div>
+        </div>
     </AuthenticatedLayout>
 </template>

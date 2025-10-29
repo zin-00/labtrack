@@ -28,7 +28,30 @@ use Illuminate\Support\Facades\Validator;
 class ComputerController extends Controller
 {
     public function index(Request $request){
-        $computers = Computer::all();
+        $computers = Computer::with('laboratory');
+
+        // Search filter - search across computer_number, ip_address, mac_address
+        if($request->has('search') && $request->search){
+            $search = $request->search;
+            $computers->where(function($query) use ($search) {
+                $query->where('computer_number', 'like', '%' . $search . '%')
+                      ->orWhere('ip_address', 'like', '%' . $search . '%')
+                      ->orWhere('mac_address', 'like', '%' . $search . '%');
+            });
+        }
+
+        // Laboratory filter
+        if($request->has('laboratory_id') && $request->laboratory_id !== 'all'){
+            $computers->where('laboratory_id', $request->laboratory_id);
+        }
+
+        // Status filter
+        if($request->has('status') && $request->status !== 'all'){
+            $computers->where('status', $request->status);
+        }
+
+        $computers = $computers->get();
+
         return response()->json([
             'computers' => $computers,
             'message' => 'Computers retrieved successfully'

@@ -1,26 +1,38 @@
 <script setup>
 import TextInput from '../components/input/TextInput.vue';
-import { onMounted, ref, toRefs, watch } from "vue";
+import { onMounted, ref, toRefs, watch, nextTick } from "vue";
 import { useComputerStore } from '../composable/computers';
 import { storeToRefs } from 'pinia';
 import { useComputerLogStore } from '../composable/computerLog';
 import { useLaboratoryStore } from '../composable/laboratory';
+import Modal from '../components/modal/Modal.vue';
 
 const comp = useComputerStore();
 const compLog = useComputerLogStore();
 const lab = useLaboratoryStore();
 
 const { fetchLaboratories } = lab;
-const { unlockComputersByLab } = comp;
+const { unlockComputersByLab, fetchAllComputers, unlockComputer} = comp;
 const { fetchRecentScans } = compLog;
 const { latestScan } = toRefs(compLog);
 
 const {
   isSubmitting,
   errorMessage,
-  data
+  data,
+  computers
 } = storeToRefs(comp);
 const { laboratories, selectedLab } = toRefs(lab);
+
+// Emergency Mode States
+const emergencyMode = ref(false);
+const emergencySearchQuery = ref('');
+const emergencyLabFilter = ref('');
+const showUnlockModal = ref(false);
+const selectedComputerForUnlock = ref(null);
+const emergencyRfidInput = ref('');
+// const computers = ref([]);
+const emergencyModalInput = ref(null);
 
 const sendRequest = async (rfid_uid) => {
   if(!selectedLab.value){
@@ -40,7 +52,59 @@ watch(() => data.value.rfid_uid, (newValue) => {
   if (newValue && newValue.trimEnd().length === 10) {
     sendRequest(newValue.trim());
   }
-});                                                                                                                                                     
+});
+
+// Emergency Mode Watcher - Auto-unlock when RFID scanned in modal
+watch(() => emergencyRfidInput.value, async (newValue) => {
+  if (newValue && newValue.trimEnd().length === 10 && selectedComputerForUnlock.value) {
+    try {
+      await unlockComputer(selectedComputerForUnlock.value.id, newValue.trim());
+      emergencyRfidInput.value = '';
+      showUnlockModal.value = false;
+      selectedComputerForUnlock.value = null;
+      errorMessage.value = '';
+    } catch (err) {
+      errorMessage.value = err.message;
+    }
+  }
+});
+
+// Watch modal state to focus input
+watch(showUnlockModal, async (newValue) => {
+  if (newValue) {
+    await nextTick();
+    emergencyModalInput.value?.focus();
+  }
+});
+
+// Filtered computers for emergency mode
+const filteredComputers = () => {
+  if (!computers.value.length) return [];
+  
+  return computers.value.filter(computer => {
+    const matchesSearch = !emergencySearchQuery.value || 
+                         computer.computer_number.toString().includes(emergencySearchQuery.value) ||
+                         computer.ip_address.toLowerCase().includes(emergencySearchQuery.value.toLowerCase()) ||
+                         computer.laboratory?.name.toLowerCase().includes(emergencySearchQuery.value.toLowerCase());
+    const matchesLab = !emergencyLabFilter.value || computer.laboratory_id == emergencyLabFilter.value;
+    return matchesSearch && matchesLab;
+  });
+};
+
+const openUnlockModal = (computer) => {
+  selectedComputerForUnlock.value = computer;
+  showUnlockModal.value = true;
+  emergencyRfidInput.value = '';
+  errorMessage.value = '';
+};
+
+const closeUnlockModal = () => {
+  showUnlockModal.value = false;
+  selectedComputerForUnlock.value = null;
+  emergencyRfidInput.value = '';
+  errorMessage.value = '';
+};
+
 
 const initializeEcho = () => {
   if (!window.Echo) {
@@ -58,10 +122,25 @@ const initializeEcho = () => {
   }
 }
 
+const sendEmergencyUnlock = async (rfid_uid) => {
+  if (!selectedComputerForUnlock.value) return;
+
+  try {
+    await unlockComputer(selectedComputerForUnlock.value.id, rfid_uid);
+    emergencyRfidInput.value = '';
+    showUnlockModal.value = false;
+    selectedComputerForUnlock.value = null;
+    errorMessage.value = '';
+  } catch (err) {
+    errorMessage.value = err.message;
+  }
+};
+
 onMounted(() => {
   initializeEcho();
   fetchRecentScans();
   fetchLaboratories();
+  fetchAllComputers();
 });
 </script>
 
@@ -81,10 +160,51 @@ onMounted(() => {
           </div>
           
           <div class="flex items-center space-x-4">
-            <div class="relative">
+            <!-- Emergency Mode Toggle -->
+            <div class="flex items-center space-x-3 px-4 py-2 bg-gray-100 rounded-lg">
+              <span :class="['text-sm font-medium transition-colors', emergencyMode ? 'text-gray-400' : 'text-gray-900']">
+                Normal
+              </span>
+              <button 
+                @click="emergencyMode = !emergencyMode"
+                :class="[
+                  'relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2',
+                  emergencyMode ? 'bg-red-600 focus:ring-red-500' : 'bg-gray-300 focus:ring-gray-400'
+                ]"
+              >
+                <span 
+                  :class="[
+                    'inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm',
+                    emergencyMode ? 'translate-x-6' : 'translate-x-1'
+                  ]"
+                ></span>
+              </button>
+              <span :class="['text-sm font-medium transition-colors', emergencyMode ? 'text-red-600' : 'text-gray-400']">
+                Emergency
+              </span>
+            </div>
+
+            <!-- Laboratory Filter - Always visible -->
+            <div v-if="!emergencyMode" class="relative">
               <select v-model="selectedLab" 
-                class="pl-10 pr-8 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 appearance-none bg-white text-gray-700">
+                class="pl-10 pr-8 py-2.5 border border-gray-300 rounded-lg appearance-none bg-white text-gray-700 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
                 <option disabled value="">Select Laboratory</option>
+                <option v-for="lab in laboratories" :key="lab.id" :value="lab.id">
+                  {{ lab.name }} - {{ lab.code }}
+                </option>
+              </select>
+              <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-4m-6 0H5m2 0h4M9 7h6m-6 4h6m-6 4h6" />
+                </svg>
+              </div>
+            </div>
+            
+            <div v-else class="relative">
+              <select v-model="emergencyLabFilter" 
+                class="pl-10 pr-8 py-2.5 border border-gray-300 rounded-lg appearance-none bg-white text-gray-700 focus:ring-2 focus:ring-red-500 focus:border-red-500">
+                <option disabled value="">Select Laboratory</option>
+                <option value="">All Laboratories</option>
                 <option v-for="lab in laboratories" :key="lab.id" :value="lab.id">
                   {{ lab.name }} - {{ lab.code }}
                 </option>
@@ -103,7 +223,9 @@ onMounted(() => {
     <!-- Main Content -->
     <main class="flex-1 py-8">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        
+        <!-- Normal Mode -->
+        <div v-if="!emergencyMode" class="grid grid-cols-1 lg:grid-cols-2 gap-8">
           
           <!-- Scanner Card -->
           <div class="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
@@ -239,7 +361,159 @@ onMounted(() => {
             </div>
           </div>
         </div>
+
+        <!-- Emergency Mode -->
+        <div v-else>
+          <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+            <div class="px-6 py-5 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+              <div class="flex items-center">
+                <div class="p-2 bg-red-600 rounded-lg mr-3">
+                  <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h2 class="text-xl font-semibold text-gray-900">Emergency Mode - Select Computer</h2>
+              </div>
+            </div>
+
+            <div class="p-6">
+              <!-- Filters -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <!-- Search Filter -->
+                <div class="col-span-1">
+                  <label for="emergency-search" class="block text-sm font-medium text-gray-700 mb-2">Search</label>
+                  <div class="relative">
+                    <input
+                      id="emergency-search"
+                      v-model="emergencySearchQuery"
+                      type="text"
+                      placeholder="PC number, IP, or Lab..."
+                      class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    />
+                    <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                      <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Results Count -->
+                <div class="col-span-1 flex items-end">
+                  <div class="w-full px-4 py-2.5 bg-gray-50 rounded-lg border border-gray-300">
+                    <p class="text-sm font-medium text-gray-700">
+                      Found: <span class="text-red-600 font-bold">{{ filteredComputers().length }}</span> computer(s)
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Computers Grid -->
+              <div v-if="filteredComputers().length > 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 max-h-[500px] overflow-y-auto pr-2">
+                <button
+                  v-for="computer in filteredComputers()"
+                  :key="computer.id"
+                  @click="openUnlockModal(computer)"
+                  class="group p-4 bg-white border-2 border-gray-200 rounded-lg hover:border-red-500 hover:shadow-lg transition-all duration-200 text-left"
+                >
+                  <div class="flex items-center justify-between mb-3">
+                    <span class="text-2xl font-bold text-gray-900 group-hover:text-red-600 transition-colors">
+                      PC {{ computer.computer_number }}
+                    </span>
+                    <svg class="h-6 w-6 text-gray-400 group-hover:text-red-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <div class="space-y-2">
+                    <p class="text-sm text-gray-600">
+                      <span class="font-medium text-gray-900">Lab:</span> {{ computer.laboratory?.name || 'N/A' }}
+                    </p>
+                    <p class="text-sm text-gray-600 font-mono">
+                      <span class="font-medium text-gray-900">IP:</span> {{ computer.ip_address || 'N/A' }}
+                    </p>
+                    <div v-if="computer.status" class="mt-2">
+                      <span :class="[
+                        'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
+                        computer.status === 'online' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                      ]">
+                        {{ computer.status }}
+                      </span>
+                    </div>
+                  </div>
+                </button>
+              </div>
+
+              <div v-else class="text-center py-12">
+                <div class="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                  <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h3 class="text-lg font-medium text-gray-900 mb-1">No computers found</h3>
+                <p class="text-gray-500">Try adjusting your search or laboratory filters</p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </main>
+
+    <!-- Unlock Modal -->
+    <Modal :show="showUnlockModal" @close="closeUnlockModal" max-width="md">
+      <div class="relative bg-white rounded-xl shadow-2xl overflow-hidden">
+        <!-- Modal Body -->
+        <div class="p-8 relative">
+          <!-- Close Button - Top Right -->
+          <button
+            @click="closeUnlockModal"
+            class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+
+          <!-- Computer Number - Large and Centered -->
+          <div class="text-center mb-8">
+            <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gray-100 mb-4">
+              <svg class="w-10 h-10 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+              </svg>
+            </div>
+            <h2 v-if="selectedComputerForUnlock" class="text-4xl font-bold text-gray-900 mb-2">
+              PC {{ selectedComputerForUnlock.computer_number }}
+            </h2>
+            <p class="text-sm text-gray-500">{{ selectedComputerForUnlock?.laboratory?.name }}</p>
+          </div>
+
+          <!-- RFID Input - Clean and Minimal -->
+          <div class="mb-6">
+            <TextInput
+              id="emergency-rfid-input"
+              ref="emergencyModalInput"
+              type="password"
+              placeholder="Scan RFID..."
+              class="w-full text-center text-2xl px-6 py-5 border-2 border-gray-300 rounded-lg focus:border-gray-900 focus:ring-2 focus:ring-gray-200 transition-colors font-mono tracking-widest"
+              maxlength="10"
+              @keyup.enter="sendEmergencyUnlock(emergencyRfidInput)"
+              v-model="emergencyRfidInput"
+              autofocus
+              autocomplete="off"
+            />
+            <p class="text-xs text-gray-400 mt-2 text-center font-mono">{{ emergencyRfidInput.length }}/10</p>
+          </div>
+
+          <!-- Status Messages - Minimal -->
+          <div v-if="isSubmitting" class="flex items-center justify-center p-3 bg-gray-50 rounded-lg mb-4">
+            <div class="animate-spin rounded-full h-4 w-4 border-2 border-gray-300 border-t-gray-900 mr-2"></div>
+            <span class="text-sm text-gray-700">Processing...</span>
+          </div>
+
+          <div v-if="errorMessage" class="text-center p-3 bg-red-50 rounded-lg mb-4">
+            <span class="text-sm text-red-700">{{ errorMessage }}</span>
+          </div>
+        </div>
+      </div>
+    </Modal>
   </div>
 </template>

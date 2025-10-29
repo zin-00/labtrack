@@ -3,13 +3,14 @@ import { useStates } from '../../../composable/states';
 import { useSectionStore } from '../../../composable/section';
 import { useYearLevelStore } from '../../../composable/yearlevel';
 import Table from '../../../components/table/Table.vue';
-import { computed, onMounted, toRefs, ref, toRef } from 'vue';
+import { computed, onMounted, toRefs, ref, watch } from 'vue';
 import Modal from '../../../components/modal/Modal.vue';
 import TextInput from '../../../components/input/TextInput.vue';
 import InputLabel from '../../../components/input/InputLabel.vue';
 import InputError from '../../../components/input/InputError.vue';
 import AuthenticatedLayout from '../../../layouts/auth/AuthenticatedLayout.vue';
 import dayjs from 'dayjs';
+import { debounce } from 'lodash-es';
 
 import { 
     TrashIcon, 
@@ -76,21 +77,45 @@ const {
 } = states;
 
 const filterSections = computed(() => {
-    if (!sections.value || !Array.isArray(sections.value)) {
-        return [];
-    }
-    return sections.value.filter((section) => {
-        return section.name?.toLowerCase().includes(searchQuery.value.toLowerCase());
-    });
+    return sections.value || [];
 });
 
 const filterYearLevels = computed(() => {
-    if (!yearLevels.value || !Array.isArray(yearLevels.value)) {
-        return [];
+    return yearLevels.value || [];
+});
+
+// Debounced filter functions
+const applySectionFilters = debounce((page = 1) => {
+    const filters = {
+        search: searchQuery.value
+    };
+    getSections(page, filters);
+}, 300);
+
+const applyYearLevelFilters = debounce((page = 1) => {
+    const filters = {
+        search: searchQuery.value
+    };
+    getYearLevels(page, filters);
+}, 300);
+
+// Watch search and trigger backend request based on active table
+watch(searchQuery, () => {
+    if (activeTable.value === 'sections') {
+        applySectionFilters(1);
+    } else {
+        applyYearLevelFilters(1);
     }
-    return yearLevels.value.filter((yearLevel) => {
-        return yearLevel.name?.toLowerCase().includes(searchQuery.value.toLowerCase());
-    });
+});
+
+// Watch active table change and fetch data
+watch(activeTable, (newValue) => {
+    searchQuery.value = ''; // Clear search when switching tabs
+    if (newValue === 'sections') {
+        applySectionFilters(1);
+    } else {
+        applyYearLevelFilters(1);
+    }
 });
 
 // Delete modal functions
@@ -100,14 +125,13 @@ const openDeleteModal = (item, type) => {
     deleteModalState.value = true;
 };
 
-const confirmDelete = () => {
+const confirmDelete = async () => {
     if (deleteType.value === 'section') {
-        deleteSection(itemToDelete.value.id);
+        await deleteSection(itemToDelete.value.id);
+        applySectionFilters(paginationSections.value.current_page || 1);
     } else if (deleteType.value === 'yearlevel') {
-        const index = yearLevels.value.findIndex(yl => yl.id === itemToDelete.value.id);
-        if (index > -1) {
-            yearLevels.value.splice(index, 1);
-        }
+        await deleteYearLevel(itemToDelete.value.id);
+        applyYearLevelFilters(paginationYearLevels.value.current_page || 1);
     }
     deleteModalState.value = false;
     itemToDelete.value = null;
@@ -135,13 +159,14 @@ const openYearLevelModal = (yearLevel = null) => {
     yearLevelModalState.value = true;
 };
 
-const saveYearLevel = (YearLevelData) => {
+const saveYearLevel = async (YearLevelData) => {
     try{
         if(selectedYearLevel.value){
-            updateYearLevel(selectedYearLevel.value.id, YearLevelData);
+            await updateYearLevel(selectedYearLevel.value.id, YearLevelData);
         }else{
-            addYearLevel(YearLevelData);
+            await addYearLevel(YearLevelData);
         }
+        applyYearLevelFilters(paginationYearLevels.value.current_page || 1);
     }catch(error){
         console.log(error);
     }finally{
@@ -187,13 +212,14 @@ const handleView = (section) => {
     console.log('Viewing section:', section);
 };
 
-const saveSection = (SectionData) => {
+const saveSection = async (SectionData) => {
     try{
         if(selectedSection.value){
-            updateSection(selectedSection.value.id, SectionData);
+            await updateSection(selectedSection.value.id, SectionData);
         }else{
-            addSection(SectionData);
+            await addSection(SectionData);
         }
+        applySectionFilters(paginationSections.value.current_page || 1);
     }catch(error){
         console.log(error);
     }finally{
@@ -203,8 +229,8 @@ const saveSection = (SectionData) => {
 }
 
 onMounted(() => {
-    getSections();
-    getYearLevels();
+    applySectionFilters(1);
+    applyYearLevelFilters(1);
 });
 </script>
 
@@ -286,15 +312,7 @@ onMounted(() => {
                 </div>
 
                 <!-- Single Table View -->
-                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
-                    
-                    <!-- Table Header -->
-                    <div class="px-6 py-4 border-b border-gray-200">
-                        <h2 class="text-lg font-medium text-black">
-                            {{ activeTable === 'sections' ? 'Sections' : 'Year Levels' }}
-                        </h2>
-                    </div>
-
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                     <!-- Sections Table -->
                     <div v-if="activeTable === 'sections'">
                         <Table
@@ -303,7 +321,7 @@ onMounted(() => {
                             :items="filterSections"
                             :mobileFields="['name', 'description', 'status', 'created_at']"
                             titleField="name"
-                            @page-change="getSections"
+                            @page-change="applySectionFilters"
                             @edit="editSection"
                             @delete="(item) => openDeleteModal(item, 'section')"
                             @view="handleView"
@@ -360,9 +378,9 @@ onMounted(() => {
                             :pagination="paginationYearLevels"
                             :loading="isLoading"
                             :items="filterYearLevels"
-                            :mobileFields="['name', 'description', 'status']"
+                            :mobileFields="['name', 'description', 'status', 'created_at']"
                             titleField="name"
-                            @page-change="getYearLevels"
+                            @page-change="applyYearLevelFilters"
                             @edit="editYearLevel"
                             @delete="(item) => openDeleteModal(item, 'yearlevel')"
                             @view="handleViewYearLevel"

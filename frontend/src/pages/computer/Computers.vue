@@ -11,6 +11,7 @@ import { useComputerStore} from '../../composable/computers';
 import { useStates } from '../../composable/states';
 import { XIcon } from 'lucide-vue-next';
 import LoaderSpinner from '../../components/spinner/LoaderSpinner.vue';
+import { debounce } from 'lodash-es';
 const toast = useToast();
 
 // Stores
@@ -72,7 +73,7 @@ const closeAssignmentModal = () => {
 
 // Handle successful student assignment
 const handleStudentAssignment = (data) => {
-  fetchComputers();
+  applyFilters(); // Refresh with current filters
   
   if (data.students) {
     toast.success(`Successfully assigned ${data.students.length} student(s) to Computer ${data.computer.computer_number}`);
@@ -81,33 +82,23 @@ const handleStudentAssignment = (data) => {
   }
 };
 
+// Remove client-side filtering - now handled by backend
 const filteredComputers = computed(() => {
-  if (!searchQuery.value && selectedLab.value === 'all' && selectedStatus.value === 'all') {
-    return computers.value; // Return all if no filters
-  }
+  return computers.value;
+});
 
-  const query = searchQuery.value ? searchQuery.value.trim().toLowerCase() : '';
-  const labId = selectedLab.value !== 'all' ? parseInt(selectedLab.value) : null;
-  const status = selectedStatus.value !== 'all' ? selectedStatus.value : null;
-
-  return computers.value.filter((computer) => {
-    // Lab filter
-    if (labId !== null && computer.laboratory_id !== labId) return false;
-    
-    // Status filter
-    if (status !== null && computer.status !== status) return false;
-    
-    // Search filter
-    if (query) {
-      const matchesNumber = computer.computer_number?.toString().toLowerCase().includes(query);
-      const matchesIP = computer.ip_address?.toLowerCase().includes(query);
-      const matchesMAC = computer.mac_address?.toLowerCase().includes(query);
-      
-      if (!matchesNumber && !matchesIP && !matchesMAC) return false;
-    }
-    
-    return true;
+// Debounced function to apply filters
+const applyFilters = debounce(() => {
+  fetchComputers({
+    search: searchQuery.value,
+    laboratory_id: selectedLab.value,
+    status: selectedStatus.value
   });
+}, 300);
+
+// Watch for filter changes
+watch([searchQuery, selectedLab, selectedStatus], () => {
+  applyFilters();
 });
 
 // Clear all filters
@@ -154,7 +145,7 @@ const saveComputer = async () => {
     } else {
       await storeComputer(newComputer);
     }
-     fetchComputers();
+    applyFilters(); // Refresh with current filters
     saveModal.value = false;
   } catch (error) {
     toast.error('Failed to save computer.');
@@ -179,7 +170,7 @@ const editComputer = (computer) => {
 const deleteComputer_func = async (id) => {
   try {
     await deleteComputer(id);
-    fetchComputers();
+    applyFilters(); // Refresh with current filters
   } catch (error) {
     toast.error('Failed to delete computer.');
     console.error(error);
@@ -246,13 +237,13 @@ const EventListener = () => {
   window.Echo.channel('computers')
     .listen('.ComputerEvent', (e) => {
       console.log("📡 Computer update received:", e.computer);
-      fetchComputers();
+      applyFilters(); // Refresh with current filters
       // handleComputerEvent(e);
     });
 }
 onMounted(async () => {
   EventListener();
-  fetchComputers();
+  applyFilters(); // Initial load with filters
   fetchLabs();
   
   window.Echo.channel('test-event')
@@ -288,8 +279,8 @@ watch(modalState, async (newVal) => {
 <template>
   <AuthenticatedLayout>
     <div class="py-4 max-w-7xl mx-auto sm:px-4 bg-white min-h-screen relative">
-      <!-- Enhanced Loading Overlay -->
-      <LoaderSpinner :is-loading="isLoading" subMessage="Please wait while we fetch your data" />
+      <!-- Enhanced Loading Overlay - Fixed Position -->
+        <LoaderSpinner :is-loading="isLoading" subMessage="Please wait while we fetch your data" />
 
       <div>
         <h2 class="text-2xl text-gray-900">Computer Management</h2>
@@ -357,7 +348,7 @@ watch(modalState, async (newVal) => {
         <div class="w-full sm:w-auto">
           <button
             @click="openAddComputerModal"
-            class="w-full sm:w-auto px-4 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-700 transition flex items-center justify-center gap-2 text-sm"
+            class="w-full sm:w-auto px-4 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-600 transition flex items-center justify-center gap-2 text-sm"
           >
            
             <span>Add Computer</span>
@@ -368,102 +359,110 @@ watch(modalState, async (newVal) => {
       <!-- Divider -->
       <hr class="border-gray-200 mb-6" />
 
-      <!-- Minimal Computer Cards Grid -->
-      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 gap-4">
+      <!-- Computer Cards Grid -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         <div
           v-for="computer in filteredComputers"
           :key="computer.id"
-          class="relative bg-gray-300 border border-gray-200 rounded-lg p-4 hover:shadow-md hover:border-gray-300 transition-all duration-200 group"
+          class="relative group"
         >
           <!-- Menu -->
           <button
             @click.stop="toggleDropdown(computer.id)"
-            class="absolute top-3 right-3 p-1 hover:bg-gray-200 rounded text-gray-500 hover:text-gray-700 transition-colors opacity-0 group-hover:opacity-100"
+            class="absolute top-3 right-3 p-1.5 hover:bg-gray-100 rounded-md text-gray-400 hover:text-gray-700 transition-colors opacity-0 group-hover:opacity-100 z-20"
           >
-            <EllipsisVerticalIcon class="h-4 w-4 text-black" />
+            <EllipsisVerticalIcon class="h-4 w-4" />
           </button>
 
           <div
             v-if="isDropdownOpen === computer.id"
-            class="absolute right-0 top-10 w-36 bg-white rounded-lg shadow-lg border border-gray-200 z-10 py-1 text-sm"
+            class="absolute right-0 top-10 w-40 bg-white rounded-lg shadow-xl border border-gray-200 z-30 py-1 text-sm"
           >
-            <button @click.stop="openAssignmentModal(computer)" class="block w-full text-left px-3 py-2 text-gray-700 hover:bg-gray-50 transition-colors">
+            <button @click.stop="openAssignmentModal(computer)" class="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors">
               Assign Student
             </button>
-            <button @click.stop="openModal(computer)" class="block w-full text-left px-3 py-2 text-gray-700 hover:bg-gray-50 transition-colors">
+            <button @click.stop="openModal(computer)" class="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors">
               Unlock by RFID
             </button>
             <button @click.stop="unlockByAdmin(computer.id)"
-            class="block w-full text-left px-3 py-2 text-gray-700 hover:bg-gray-50 transition-colors"
+            class="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors"
             >
               Unlock directly
             </button>
-            <button @click.stop="editComputer(computer)" class="block w-full text-left px-3 py-2 text-gray-700 hover:bg-gray-50 transition-colors">
+            <button @click.stop="editComputer(computer)" class="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors">
               Edit
             </button>
-            <button @click.stop="deleteComputer_func(computer.id)" class="block w-full text-left px-3 py-2 text-red-600 hover:bg-red-50 transition-colors">
+            <button @click.stop="deleteComputer_func(computer.id)" class="block w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 transition-colors">
               Delete
             </button>
           </div>
 
-          <!-- Computer Content - Click to assign students -->
-          <div class="pr-6 cursor-pointer" @click="openAssignmentModal(computer)">
-            <!-- Header with status and PC number -->
+          <!-- Computer Card - Click to assign students -->
+          <button
+            @click="openAssignmentModal(computer)"
+            class="w-full p-4 bg-white border-2 border-gray-200 rounded-lg hover:border-gray-400 hover:shadow-lg transition-all duration-200 text-left"
+          >
             <div class="flex items-center justify-between mb-3">
+              <span class="text-2xl font-bold text-gray-900 group-hover:text-gray-700 transition-colors">
+                PC {{ computer.computer_number }}
+              </span>
               <div class="flex items-center gap-2">
                 <div 
-                  class="w-2.5 h-2.5 rounded-full"
-                  :class="computer.is_online ? 'bg-green-500' : 'bg-gray-400'"
+                  class="w-2 h-2 rounded-full"
+                  :class="computer.is_online ? 'bg-green-500 animate-pulse' : 'bg-gray-300'"
                 ></div>
-                <span class="font-medium text-gray-900">PC {{ computer.computer_number }}</span>
+                <span
+                  class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border"
+                  :class="computer.is_lock 
+                    ? 'bg-red-50 text-red-700 border-red-200' 
+                    : 'bg-green-50 text-green-700 border-green-200'"
+                >
+                  {{ computer.is_lock ? 'Locked' : 'Unlocked' }}
+                </span>
               </div>
             </div>
             
-            <!-- Main info -->
-            <div class="space-y-2 text-sm text-gray-600">
-              <div class="font-mono text-xs">{{ computer.ip_address }}</div>
-              <div class="font-mono text-xs">{{ computer.mac_address }}</div>
-              <div class="text-xs text-gray-500">{{ func.labs?.find(l => l.id === computer.laboratory_id)?.name || 'Unknown Lab' }}</div>
+            <div class="space-y-2">
+              <p class="text-sm text-gray-600">
+                <span class="font-medium text-gray-900">Lab:</span> {{ func.labs?.find(l => l.id === computer.laboratory_id)?.name || 'N/A' }}
+              </p>
+              <p class="text-sm text-gray-600 font-mono">
+                <span class="font-medium text-gray-900">IP:</span> {{ computer.ip_address || 'N/A' }}
+              </p>
+              <p class="text-sm text-gray-600 font-mono">
+              </p>
               
               <!-- Assigned students -->
-              <div v-if="computer.assigned_students_count" class="text-blue-600 text-xs font-medium">
-                {{ computer.assigned_students_count }} student{{ computer.assigned_students_count > 1 ? 's' : '' }}
+              <div v-if="computer.assigned_students_count" class="pt-1">
+                <span class="inline-flex items-center px-2 py-1 bg-blue-50 border border-blue-100 rounded-md text-blue-700 text-xs font-medium">
+                  👥 {{ computer.assigned_students_count }} student{{ computer.assigned_students_count > 1 ? 's' : '' }}
+                </span>
+              </div>
+              
+              <div class="mt-2">
+                <span
+                  class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+                  :class="{
+                    'bg-green-100 text-green-800': computer.status === 'active',
+                    'bg-red-100 text-red-800': computer.status === 'inactive',
+                    'bg-yellow-100 text-yellow-800': computer.status === 'maintenance'
+                  }"
+                >
+                  {{ computer.status }}
+                </span>
               </div>
             </div>
-            
-            <!-- Status badges -->
-            <div class="flex gap-1 mt-3">
-              <span
-                class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
-                :class="{
-                  'bg-green-100 text-green-800': computer.status === 'active',
-                  'bg-red-100 text-red-800': computer.status === 'inactive',
-                  'bg-yellow-100 text-yellow-800': computer.status === 'maintenance'
-                }"
-              >
-                {{ computer.status }}
-              </span>
-              
-              <span
-                class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
-                :class="computer.is_lock 
-                  ? 'bg-red-100 text-red-800' 
-                  : 'bg-green-100 text-green-800'"
-              >
-                {{ computer.is_lock ? 'Locked' : 'Unlocked' }}
-              </span>
-            </div>
-          </div>
+          </button>
         </div>
       </div>
 
       <!-- Unlock Modal -->
       <Modal :show="modalState" @close="closeModal" :closeable="!isSubmitting">
-        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md mx-auto relative">
+        <div class="bg-white p-6 rounded-xl shadow-xl w-full max-w-md mx-auto relative border border-gray-100">
           <!-- Header -->
           <div class="flex justify-between items-center mb-6">
             <div class="flex items-center gap-3">
-              <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600">
+              <div class="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center text-gray-700">
                 <!-- lock icon -->
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -477,24 +476,26 @@ watch(modalState, async (newVal) => {
             <button
               v-if="!isSubmitting"
               @click="closeModal"
-              class="text-gray-400 hover:text-gray-600 text-xl leading-none px-1 rounded-md hover:bg-gray-100 transition"
+              class="text-gray-400 hover:text-gray-600 p-1 rounded-md hover:bg-gray-100 transition"
               aria-label="Close"
             >
-              &times;
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
             </button>
           </div>
 
           <!-- Computer info -->
-          <div class="mb-6 p-3 bg-blue-50 rounded-md border border-blue-100">
-            <p class="text-xs text-blue-700">Computer to unlock:</p>
-            <p class="text-base font-medium text-blue-900">
+          <div class="mb-6 p-3 bg-gray-50 rounded-lg border border-gray-200">
+            <p class="text-xs text-gray-600">Computer to unlock:</p>
+            <p class="text-base font-semibold text-gray-900">
               Computer {{ selectedComputer?.computer_number ?? 'N/A' }}
             </p>
           </div>
 
           <!-- RFID input -->
           <div class="mb-4">
-            <label for="rfid_input" class="block text-sm font-medium text-gray-700 mb-1">
+            <label for="rfid_input" class="block text-sm font-medium text-gray-700 mb-2">
               RFID Tag
             </label>
             <div class="relative">
@@ -504,9 +505,9 @@ watch(modalState, async (newVal) => {
                 type="password"
                 placeholder="Scan card..."
                 v-model="form.rfid_uid"
-                class="w-full text-center text-lg px-4 py-3 border-2 rounded-md transition-colors bg-white"
+                class="w-full text-center text-lg px-4 py-3 border-2 rounded-lg transition-colors bg-white"
                 :class="{
-                  'border-gray-300 focus:border-blue-500 focus:ring-blue-500': !hasError && !isSuccess,
+                  'border-gray-300 focus:border-gray-500 focus:ring-gray-500': !hasError && !isSuccess,
                   'border-red-500 focus:border-red-500 focus:ring-red-500': hasError,
                   'border-green-500 focus:border-green-500 focus:ring-green-500': isSuccess,
                   'cursor-not-allowed opacity-50': isSubmitting
@@ -523,7 +524,7 @@ watch(modalState, async (newVal) => {
                 v-if="isSubmitting"
                 class="absolute right-3 top-1/2 -translate-y-1/2"
               >
-                <div class="animate-spin rounded-full h-5 w-5 border-2 border-blue-400 border-t-transparent"></div>
+                <div class="animate-spin rounded-full h-5 w-5 border-2 border-gray-400 border-t-transparent"></div>
               </div>
 
               <!-- Success check -->
@@ -564,14 +565,14 @@ watch(modalState, async (newVal) => {
             <button
               v-if="!isSubmitting"
               @click="closeModal"
-              class="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition"
+              class="px-4 py-2 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
             >
               Cancel
             </button>
             <button
               :disabled="isSubmitting"
               @click="unlock_function"
-              class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition"
+              class="px-4 py-2 text-sm bg-gray-700 text-white rounded-lg hover:bg-gray-600 disabled:opacity-50 transition"
             >
               {{ isSubmitting ? 'Unlocking…' : 'Unlock' }}
             </button>
@@ -581,7 +582,7 @@ watch(modalState, async (newVal) => {
 
     <!-- Add / Edit Computer Modal -->
 <Modal :show="saveModal" @close="saveModal = false">
-  <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-auto relative">
+  <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-auto relative border border-gray-100">
     <!-- Header -->
     <div class="px-6 py-4 border-b border-gray-100">
       <h2 class="text-xl font-semibold text-gray-900">
@@ -598,7 +599,7 @@ watch(modalState, async (newVal) => {
           v-model="newComputer.computer_number"
           type="text"
           placeholder="PC-001"
-          class="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:border-gray-400 focus:ring-1 focus:ring-gray-200 bg-gray-50 focus:bg-white transition"
+          class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:border-gray-500 focus:ring-1 focus:ring-gray-500 bg-white transition"
         >
       </div>
 
@@ -609,7 +610,7 @@ watch(modalState, async (newVal) => {
           v-model="newComputer.ip_address"
           type="text"
           placeholder="192.168.1.100"
-          class="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:border-gray-400 focus:ring-1 focus:ring-gray-200 bg-gray-50 focus:bg-white transition font-mono"
+          class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:border-gray-500 focus:ring-1 focus:ring-gray-500 bg-white transition font-mono"
         >
       </div>
 
@@ -620,7 +621,7 @@ watch(modalState, async (newVal) => {
           v-model="newComputer.mac_address"
           type="text"
           placeholder="00:1B:44:11:3A:B7"
-          class="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:border-gray-400 focus:ring-1 focus:ring-gray-200 bg-gray-50 focus:bg-white transition font-mono"
+          class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:border-gray-500 focus:ring-1 focus:ring-gray-500 bg-white transition font-mono"
         >
       </div>
 
@@ -629,7 +630,7 @@ watch(modalState, async (newVal) => {
         <label class="block text-sm font-medium text-gray-700 mb-2">Laboratory</label>
         <select
           v-model="newComputer.laboratory_id"
-          class="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:border-gray-400 focus:ring-1 focus:ring-gray-200 bg-gray-50 focus:bg-white transition"
+          class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:border-gray-500 focus:ring-1 focus:ring-gray-500 bg-white transition"
         >
           <option value="" disabled>Select laboratory</option>
           <option v-if="(func.labs?.length ?? 0) === 0" disabled>No labs available</option>
@@ -644,7 +645,7 @@ watch(modalState, async (newVal) => {
         <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
         <select
           v-model="newComputer.status"
-          class="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:border-gray-400 focus:ring-1 focus:ring-gray-200 bg-gray-50 focus:bg-white transition"
+          class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:border-gray-500 focus:ring-1 focus:ring-gray-500 bg-white transition"
         >
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
@@ -659,7 +660,7 @@ watch(modalState, async (newVal) => {
             id="is_online"
             v-model="newComputer.is_online"
             type="checkbox"
-            class="h-4 w-4 text-gray-600 focus:ring-gray-300 border-gray-300 rounded"
+            class="h-4 w-4 text-gray-600 focus:ring-gray-500 border-gray-300 rounded"
           >
           <label for="is_online" class="ml-2 text-sm text-gray-700">Online</label>
         </div>
@@ -669,7 +670,7 @@ watch(modalState, async (newVal) => {
             id="is_lock"
             v-model="newComputer.is_lock"
             type="checkbox"
-            class="h-4 w-4 text-gray-600 focus:ring-gray-300 border-gray-300 rounded"
+            class="h-4 w-4 text-gray-600 focus:ring-gray-500 border-gray-300 rounded"
           >
           <label for="is_lock" class="ml-2 text-sm text-gray-700">Locked</label>
         </div>
@@ -677,16 +678,16 @@ watch(modalState, async (newVal) => {
     </div>
 
     <!-- Footer Actions -->
-    <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 rounded-b-lg flex justify-end gap-3">
+    <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 rounded-b-xl flex justify-end gap-3">
       <button
         @click="saveModal = false"
-        class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition"
+        class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
       >
         Cancel
       </button>
       <button
         @click="saveComputer"
-        class="px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-md hover:bg-black transition"
+        class="px-4 py-2 text-sm font-medium text-white bg-gray-700 rounded-lg hover:bg-gray-600 transition"
       >
         Save
       </button>

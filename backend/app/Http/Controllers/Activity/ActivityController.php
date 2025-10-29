@@ -57,8 +57,29 @@ class ActivityController extends Controller
 
     public function getBrowserActivities(Request $request)
     {
-        $activities = BrowserActivity::orderBy('created_at', 'desc')
-            ->with('computer')
+        $query = BrowserActivity::query()->with('computer');
+
+        // Search filter (browser_name, title, url, ip_address)
+        if ($request->has('search') && $request->search != '') {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('browser_name', 'like', '%' . $search . '%')
+                  ->orWhere('title', 'like', '%' . $search . '%')
+                  ->orWhere('url', 'like', '%' . $search . '%')
+                  ->orWhere('ip_address', 'like', '%' . $search . '%');
+            });
+        }
+
+        // Date range filters
+        if ($request->has('date_from') && $request->date_from != '') {
+            $query->whereDate('created_at', '>=', $request->date_from);
+        }
+
+        if ($request->has('date_to') && $request->date_to != '') {
+            $query->whereDate('created_at', '<=', $request->date_to);
+        }
+
+        $activities = $query->orderBy('created_at', 'desc')
             ->paginate(7)
             ->appends($request->query());
 

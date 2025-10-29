@@ -1,7 +1,7 @@
 <script setup>
 import { useProgramStore } from '../../../composable/program';
 import Table from '../../../components/table/Table.vue';
-import { computed, onMounted, toRefs, ref, toRef } from 'vue';
+import { computed, onMounted, toRefs, ref, watch } from 'vue';
 import Modal from '../../../components/modal/Modal.vue';
 import TextInput from '../../../components/input/TextInput.vue';
 import InputLabel from '../../../components/input/InputLabel.vue';
@@ -9,6 +9,7 @@ import InputError from '../../../components/input/InputError.vue';
 import AuthenticatedLayout from '../../../layouts/auth/AuthenticatedLayout.vue';
 import dayjs from 'dayjs';
 import { useStates } from '../../../composable/states';
+import { debounce } from 'lodash-es';
 
 import { 
     TrashIcon, 
@@ -53,21 +54,25 @@ const programData = ref({
 });
 
 const filterPrograms = computed(() => {
-    if (!paginatedPrograms.value || !Array.isArray(paginatedPrograms.value)) {
-        return [];
-    }
-    return paginatedPrograms.value.filter((program) => {
-        const searchLower = searchQuery.value.toLowerCase();
-        return program.program_name?.toLowerCase().includes(searchLower) ||
-               program.program_code?.toLowerCase().includes(searchLower) ||
-               program.program_description?.toLowerCase().includes(searchLower);
-    });
+    return paginatedPrograms.value || [];
+});
+
+// Debounced filter function
+const applyFilters = debounce((page = 1) => {
+    const filters = {
+        search: searchQuery.value
+    };
+    fetchPrograms(page, filters);
+}, 300);
+
+// Watch search and trigger backend request
+watch(searchQuery, () => {
+    applyFilters(1);
 });
 
 // Delete modal functions
 const openDeleteModal = (program) => {
     itemToDelete.value = program;
-    deleteProgram(program.id);
     deleteModalState.value = true;
 };
 
@@ -76,7 +81,7 @@ const confirmDelete = async () => {
         await deleteProgram(itemToDelete.value.id);
         deleteModalState.value = false;
         itemToDelete.value = null;
-        await getPrograms(); // Refresh the list
+        applyFilters(paginationPrograms.value.current_page || 1);
     } catch (error) {
         console.error('Error deleting program:', error);
     }
@@ -109,14 +114,13 @@ const saveProgram = async () => {
         
         if (selectedProgram.value) {
             await updateProgram(selectedProgram.value.id, dataToSave);
-
         } else {
             await addProgram(dataToSave);
         }
         
         modalState.value = false;
         selectedProgram.value = null;
-        await getPrograms();
+        applyFilters(paginationPrograms.value.current_page || 1);
     } catch (error) {
         console.error('Error saving program:', error);
         if (error.response?.data?.errors) {
@@ -135,7 +139,7 @@ const handleView = (program) => {
 };
 
 onMounted(() => {
-    fetchPrograms();
+    applyFilters(1);
 });
 </script>
 
@@ -146,53 +150,52 @@ onMounted(() => {
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 
                 <!-- Header Section -->
-                <div class="mb-8">
-                    <h1 class="text-3xl font-light text-black mb-2">Programs Management</h1>
-                    <p class="text-gray-500 text-sm">Manage academic programs with simplicity</p>
+                <div class="mb-4">
+                    <h2 class="text-xl font-medium text-gray-900">Programs Management</h2>
+                    <p class="mt-1 text-xs text-gray-500">Manage academic programs with simplicity</p>
                 </div>
 
-                <!-- Control Panel -->
-                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8 justify-between">
-                    
-                    <!-- Header with Add Button -->
-                    <div class="flex items-center justify-between mb-6">
-                        <button
-                            @click="openProgramModal()"
-                            class="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
-                        >
-                            <PlusIcon class="w-4 h-4" />
-                            Add Program
-                        </button>
-                    </div>
-
-                    <!-- Search -->
-                    <div class="flex items-center gap-4">
-                        <div class="relative flex-1 max-w-md">
+                <!-- Control Panel - Single Row -->
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <!-- Left: Search Box -->
+                        <div class="relative">
                             <input
                                 v-model="searchQuery"
                                 type="text"
                                 placeholder="Search programs..."
-                                class="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:border-gray-400 focus:outline-none transition-colors"
+                                class="w-52 border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:border-gray-400 focus:ring-1 focus:ring-gray-200 transition"
                             />
                             <button
                                 v-if="searchQuery"
                                 @click="searchQuery = ''"
-                                class="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                                class="absolute right-2 top-2 text-gray-400 hover:text-gray-600"
                             >
-                                <XIcon class="w-4 h-4" />
+                                <XMarkIcon class="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        <!-- Spacer -->
+                        <div class="flex-1"></div>
+
+                        <!-- Right: Results Count & Add Button -->
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs text-gray-600">
+                                {{ filterPrograms.length }} {{ filterPrograms.length === 1 ? 'program' : 'programs' }}
+                            </span>
+                            <button
+                                @click="openProgramModal()"
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-900 text-white text-xs font-medium rounded-md hover:bg-gray-800 transition-colors"
+                            >
+                                <PlusIcon class="w-3.5 h-3.5" />
+                                Add Program
                             </button>
                         </div>
                     </div>
                 </div>
 
                 <!-- Programs Table -->
-                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
-                    
-                    <!-- Table Header -->
-                    <div class="px-6 py-4 border-b border-gray-200">
-                        <h2 class="text-lg font-medium text-black">Programs</h2>
-                    </div>
-
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                     <!-- Table Component -->
                     <Table
                         :pagination="paginationPrograms"
@@ -200,7 +203,7 @@ onMounted(() => {
                         :items="filterPrograms"
                         :mobileFields="['program_name', 'program_code', 'program_description', 'created_at']"
                         titleField="program_name"
-                        @page-change="fetchPrograms"
+                        @page-change="applyFilters"
                         @edit="editProgram"
                         @delete="openDeleteModal"
                         @view="handleView"

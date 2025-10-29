@@ -21,12 +21,14 @@ export const useSectionStore = defineStore("section", () => {
     } = states;
 
 
-    const getSections = async (page = 1) => {
-        if (sections.value.length > 0) {
-            return;
-        }
+    const getSections = async (page = 1, filters = {}) => {
         try{
-            const response = await axios.get(`${api}/sections?page=${page}`,
+            const params = new URLSearchParams();
+            params.append('page', page);
+
+            if (filters.search) params.append('search', filters.search);
+
+            const response = await axios.get(`${api}/sections?${params.toString()}`,
                 getAuthHeader()
             );
 
@@ -55,8 +57,7 @@ export const useSectionStore = defineStore("section", () => {
                 section,
                 getAuthHeader()
             );
-            
-            sections.value.push(response.data.section);
+
             success(response.data.message || 'Success')
             console.log("Response",response.data);
         }catch(err){
@@ -72,17 +73,14 @@ export const useSectionStore = defineStore("section", () => {
                 getAuthHeader()
             );
 
-            const index = sections.value.findIndex(s => s.id === section.id);
-            sections.value[index] = response.data.section;
-            // success(response.data.message || 'Success')
+            success(response.data.message || 'Success')
             console.log("Response",response.data);
-            getSections();
         }catch(err){
             error(err.response.data.message || 'Error')
             console.log("Error",err.response.data);
         }
     }
-            
+
 
     const deleteSection = async(id) => {
         try{
@@ -90,7 +88,6 @@ export const useSectionStore = defineStore("section", () => {
                 getAuthHeader()
             );
 
-            sections.value = sections.value.filter(section => section.id !== id);
             success(response.data.message || 'Success')
         }catch(err){
             error(err.response.data.message || 'Error')

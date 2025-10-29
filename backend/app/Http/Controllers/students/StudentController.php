@@ -17,11 +17,45 @@ use Illuminate\Support\Facades\Validator;
 class StudentController extends Controller
 {
     public function index(Request $request){
-    $students = Student::with(['program', 'year_level','section'])->
-    orderBy('created_at', 'asc')->paginate(7);
+        $students = Student::with(['program', 'year_level','section']);
+
+        // Search filter - search across student_id, first_name, last_name, email
+        if($request->has('search') && $request->search){
+            $search = $request->search;
+            $students->where(function($query) use ($search) {
+                $query->where('student_id', 'like', '%' . $search . '%')
+                      ->orWhere('first_name', 'like', '%' . $search . '%')
+                      ->orWhere('last_name', 'like', '%' . $search . '%')
+                      ->orWhere('email', 'like', '%' . $search . '%');
+            });
+        }
+
+        // Program filter
+        if($request->has('program_id') && $request->program_id !== 'all'){
+            $students->where('program_id', $request->program_id);
+        }
+
+        // Year level filter
+        if($request->has('year_level_id') && $request->year_level_id !== 'all'){
+            $students->where('year_level_id', $request->year_level_id);
+        }
+
+        // Section filter
+        if($request->has('section_id') && $request->section_id !== 'all'){
+            $students->where('section_id', $request->section_id);
+        }
+
+        // Status filter
+        if($request->has('status') && $request->status !== 'all'){
+            $students->where('status', $request->status);
+        }
+
+        $students = $students->orderBy('created_at', 'desc')->paginate(7);
+
         return response()->json([
             'students' => $students,
-            'message' => 'Students retrieved successfully']);
+            'message' => 'Students retrieved successfully'
+        ]);
     }
     public function store(Request $request){
         $data = $request->validate([

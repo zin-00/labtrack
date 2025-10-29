@@ -6,10 +6,10 @@ import axios from 'axios';
 import {useStates} from '../composable/states';
 
 const { api, getAuthHeader } = useApiUrl();
-
+ 
  export const useComputerStore = defineStore('computer', () => {
  const states = useStates();
- const {
+ const { 
           isLoading,
           computers,
           recentScans,
@@ -27,57 +27,40 @@ const { api, getAuthHeader } = useApiUrl();
     rfid_uid: '',
   });
 
-  const fetchComputers = async (filters = {}) => {
+  const fetchComputers = async () => {
     try {
       isLoading.value = true;
-
-      // Build query parameters
-      const params = new URLSearchParams();
-      if (filters.search) {
-        params.append('search', filters.search);
-      }
-      if (filters.laboratory_id && filters.laboratory_id !== 'all') {
-        params.append('laboratory_id', filters.laboratory_id);
-      }
-      if (filters.status && filters.status !== 'all') {
-        params.append('status', filters.status);
-      }
-
-      const queryString = params.toString();
-      const url = queryString ? `${api}/computers?include=laboratory&${queryString}` : `${api}/computers?include=laboratory`;
-
-      const response = await axios.get(url, getAuthHeader());
-      computers.value = response.data.computers || [];
-    } catch (err) {
-      computers.value = [];
-      error('Failed to fetch computers');
-      console.error('Error fetching computers:', err);
-    } finally {
-      isLoading.value = false;
-    }
-  };
-    const fetchAllComputers = async () => {
-    try {
       const response = await axios.get(`${api}/computers?include=laboratory`, getAuthHeader());
       computers.value = response.data.computers || [];
     } catch (err) {
       computers.value = [];
       error('Failed to fetch computers');
       console.error('Error fetching computers:', err);
+    } finally {
+      isLoading.value = false;
     }
   };
 
+  const fetchAllComputers = async () => {
+    try {
+      const response = await axios.get(`${api}/computers`, getAuthHeader());
+      computers.value = response.data.computers || [];
+    } catch (err) {
+      computers.value = [];
+      error('Failed to fetch computers');
+      console.error('Error fetching computers:', err);
+    }
+  };
+
+
   const fetchLabs = async () => {
     try {
-      isLoading.value = true;
       const response = await axios.get(`${api}/laboratories`, getAuthHeader());
       labs.value = response.data.laboratories || [];
     } catch (err) {
       labs.value = [];
       error('Failed to fetch labs');
       console.error('Error fetching labs:', err);
-    } finally {
-      isLoading.value = false;
     }
   };
 
@@ -117,11 +100,11 @@ const { api, getAuthHeader } = useApiUrl();
         const response = await axios.post(`${api}/assign-laboratories`, {computer_ids: computerIds, laboratory_id: labId }, getAuthHeader());
         success(response.data.message || 'Lab assigned to computer successfully!');
         fetchNoLabComputers();
-
+        
     } catch (err) {
       error('Failed to assign lab to computer.');
       console.error('Error assigning lab to computer:', err);
-
+        
     }
   }
 
@@ -142,7 +125,7 @@ const { api, getAuthHeader } = useApiUrl();
         { rfid_uid },
         getAuthHeader()
       );
-
+      
       success(response.data.message || 'Computer unlocked successfully!');
       console.log(response.data.message);
       await fetchComputers();
@@ -171,37 +154,37 @@ const unlockAssignedComputer = async (rfid_uid) => {
   try {
     isSubmitting.value = true;
     errorMessage.value = "";
-
+    
     const response = await axios.post(
-      `${api}/computer-unlock`,
+      `${api}/computer-unlock`, 
       { rfid_uid },
       getAuthHeader()
     );
-
+    
     console.log('Full response:', response);
     console.log('Message:', response.data.message);
     console.log('Computers:', response.data.computers);
     console.log('Student:', response.data.student);
-
+    
     success(response.data.message);
-
+    
     // Add to recent scans with proper data
     if (response.data.computers && response.data.computers.length > 0) {
       response.data.computers.forEach(computer => {
         recentScans.value.unshift({
           id: computer.log_id || Date.now(),
-          name: response.data.student?.name || "Unknown Student",
+          name: response.data.student?.name || "Unknown Student", 
           computerNumber: `PC-${computer.computer_number}`,
           ipAddress: computer.ip_address,
           timestamp: new Date().toLocaleString()
         });
       });
     }
-
+    
   } catch (err) {
     console.error('Error details:', err);
     console.error('Response data:', err.response?.data);
-
+    
     errorMessage.value = err.response?.data?.message || "An error occurred";
     error(err.response?.data?.message || "An error occurred");
   } finally {
@@ -229,7 +212,7 @@ const handleComputerEvent = (payload) => {
 const unlockComputersByLab = async (labId, rfid_uid) => {
   try {
     const response = await axios.post(
-      `${api}/unlock-computers-by-lab/${labId}/${rfid_uid}`,
+      `${api}/unlock-computers-by-lab/${labId}/${rfid_uid}`, 
       {},
       getAuthHeader()
     );
