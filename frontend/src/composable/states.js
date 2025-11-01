@@ -64,6 +64,7 @@ export const useStates = defineStore('state', () => {
     const recentScans = ref([]);
     const auditLogs = ref([]);
     const assignedStudents = ref([]);
+    const reports = ref([]);
 
     // Pagination objects
     const pagination = ref({});
@@ -191,6 +192,7 @@ export const useStates = defineStore('state', () => {
         recentScans,
         auditLogs,
         assignedStudents,
+        reports,
 
 
 

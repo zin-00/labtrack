@@ -15,7 +15,7 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::call(function () {
-    $offlineThreshold = now()->subMinutes(2);
+    $offlineThreshold = now()->subMinutes(5);
 
     $computersToMarkOffline = Computer::with('laboratory')
         ->where('is_online', true) // only online computers

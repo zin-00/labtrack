@@ -10,3 +10,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/request-access/{id}/approve', [RequestAccessController::class, 'approve']);
     Route::patch('/request-access/{id}/reject', [RequestAccessController::class, 'reject']);
 });
+
+    // Request access
+    Route::post('/request-access', [RequestAccessController::class, 'store']);

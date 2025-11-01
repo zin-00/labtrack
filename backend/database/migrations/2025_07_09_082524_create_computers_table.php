@@ -20,7 +20,7 @@ return new class extends Migration
             $table->enum('status', ['active', 'inactive', 'maintenance']);
             $table->boolean('is_lock')->default(false);
             $table->boolean('is_online')->default(true);
-            $table->timestamp('last_seen')->nullable()->after('is_online');
+            $table->timestamp('last_seen')->nullable();
             $table->timestamps();
         });
     }

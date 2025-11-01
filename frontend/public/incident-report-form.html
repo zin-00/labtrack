@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Equipment/Facility Incident Report Form</title>
+    <script>
+        // Function to get URL parameters
+        function getUrlParameter(name) {
+            name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+            var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+            var results = regex.exec(location.search);
+            return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+        }
+
+        // Function to format date
+        function formatDate(dateString) {
+            if (!dateString) return '';
+            const date = new Date(dateString);
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const year = date.getFullYear();
+            return `${month}/${day}/${year}`;
+        }
+
+        // Auto-fill form on page load
+        window.addEventListener('DOMContentLoaded', function() {
+            const fullname = getUrlParameter('fullname');
+            const description = getUrlParameter('description');
+            const date = getUrlParameter('date');
+
+            if (fullname) {
+                document.getElementById('incident-person').value = fullname;
+            }
+            if (description) {
+                document.getElementById('situation-description').value = description;
+            }
+            if (date) {
+                document.getElementById('incident-date').value = date.split('T')[0];
+            }
+
+            // Auto-print if print parameter is present
+            if (getUrlParameter('print') === 'true') {
+                setTimeout(function() {
+                    window.print();
+                }, 500);
+            }
+        });
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Times New Roman', Times, serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        .header {
+            display: grid;
+            grid-template-columns: 120px 1fr 250px;
+            border: 2px solid #000;
+            margin-bottom: 15px;
+        }
+
+        .logo-section {
+            border-right: 2px solid #000;
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo-placeholder {
+            width: 80px;
+            height: 80px;
+            border: 2px solid #666;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+        }
+
+        .title-section {
+            border-right: 2px solid #000;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .doc-info {
+            padding: 10px;
+            font-size: 11px;
+        }
+
+        .info-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            border-bottom: 1px solid #000;
+            padding: 3px 5px;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            font-weight: bold;
+        }
+
+        h2 {
+            font-size: 13px;
+            text-align: center;
+            margin: 0;
+        }
+
+        .instructions {
+            font-size: 11px;
+            margin-bottom: 15px;
+            line-height: 1.4;
+        }
+
+        .form-section {
+            border: 2px solid #000;
+            margin-bottom: 15px;
+        }
+
+        .form-row {
+            display: grid;
+            border-bottom: 1px solid #000;
+            min-height: 35px;
+        }
+
+        .form-row:last-child {
+            border-bottom: none;
+        }
+
+        .form-row.two-col {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .form-cell {
+            padding: 8px;
+            font-size: 11px;
+            border-right: 1px solid #000;
+        }
+
+        .form-cell:last-child {
+            border-right: none;
+        }
+
+        .form-cell label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 3px;
+        }
+
+        .form-cell.large {
+            min-height: 150px;
+        }
+
+        .form-cell input[type="text"],
+        .form-cell input[type="date"],
+        .form-cell textarea {
+            width: 100%;
+            border: none;
+            border-bottom: 1px solid #ccc;
+            padding: 3px;
+            font-family: inherit;
+            font-size: 11px;
+        }
+
+        .form-cell textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+            margin: 5px 0;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            width: 15px;
+            height: 15px;
+        }
+
+        .property-section {
+            background-color: #f0f0f0;
+            padding: 15px;
+            border: 2px solid #000;
+            margin-bottom: 15px;
+        }
+
+        .property-section h3 {
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .property-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+
+        .property-field {
+            font-size: 11px;
+        }
+
+        .property-field label {
+            font-weight: bold;
+            display: inline-block;
+            margin-right: 5px;
+        }
+
+        .property-field input {
+            border: none;
+            border-bottom: 1px solid #000;
+            background: transparent;
+            width: 70%;
+            padding: 2px;
+            font-size: 11px;
+        }
+
+        .action-field {
+            margin: 10px 0;
+        }
+
+        .action-field label {
+            font-weight: bold;
+            font-size: 11px;
+        }
+
+        .action-field input {
+            width: 100%;
+            border: none;
+            border-bottom: 1px solid #000;
+            background: transparent;
+            padding: 3px;
+            margin: 5px 0;
+            font-size: 11px;
+        }
+
+        .footer {
+            margin-top: 30px;
+            font-size: 11px;
+        }
+
+        .noted-by {
+            margin: 20px 0;
+            font-size: 11px;
+        }
+
+        .signature-section {
+            margin-top: 30px;
+        }
+
+        .signature-name {
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        .signature-title {
+            font-size: 11px;
+            margin-bottom: 20px;
+        }
+
+        .signature-line {
+            border-top: 1px solid #000;
+            width: 200px;
+            margin-top: 50px;
+            position: relative;
+        }
+
+        .signature-date {
+            position: absolute;
+            right: 0;
+            top: -25px;
+            font-size: 11px;
+        }
+
+        .contact-info {
+            font-size: 10px;
+            color: #666;
+            margin-top: 20px;
+        }
+
+        @media print {
+            body {
+                background-color: white;
+                padding: 0;
+            }
+            .container {
+                box-shadow: none;
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo-section">
+                <div class="logo-placeholder">
+                    Your Logo Here
+                </div>
+            </div>
+            <div class="title-section">
+                <h2>EQUIPMENT/FACILITY INCIDENT<br>REPORT FORM</h2>
+            </div>
+            <div class="doc-info">
+                <div class="info-row">
+                    <span class="info-label">VERSION NO.</span>
+                    <span class="info-label">DOCUMENT NAME</span>
+                </div>
+                <div class="info-row">
+                    <span></span>
+                    <span></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">DOCUMENT NO.</span>
+                    <span></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">REVISION NO.</span>
+                    <span></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">EFFECTIVITY DATE</span>
+                    <span>SEPTEMBER 20, 2023</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">PAGE NO.</span>
+                    <span>Page 1 of 1</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="instructions">
+            Please report any incident or issues with the school's equipment/facility. This form shall be sent to the Property Office for review and appropriate action.
+        </div>
+
+        <div class="form-section">
+            <div class="form-row">
+                <div class="form-cell">
+                    <label>Name of the person filling out this form:</label>
+                    <input type="text">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-cell">
+                    <label>Date of incident:</label>
+                    <input type="date" id="incident-date">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-cell">
+                    <label>Name of the person the incident/issue occurred (if applicable):</label>
+                    <input type="text" id="incident-person">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-cell large">
+                    <label>Please describe the situation with as much detail as possible:</label>
+                    <textarea id="situation-description"></textarea>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-cell">
+                    <label>Recommendation(s):</label>
+                    <div class="checkbox-group">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="repair">
+                            <label for="repair">For Repair</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="replacement">
+                            <label for="replacement">For Replacement</label>
+                        </div>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <label>Others, please specify:</label>
+                        <input type="text">
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-row two-col">
+                <div class="form-cell">
+                    <label>Signature of the person filling out this form:</label>
+                    <input type="text">
+                </div>
+                <div class="form-cell">
+                    <label>Actual Date:</label>
+                    <input type="date">
+                </div>
+            </div>
+
+            <div class="form-row two-col">
+                <div class="form-cell">
+                    <label>Signature and Name of Immediate Head:</label>
+                    <input type="text">
+                </div>
+                <div class="form-cell">
+                    <label>Actual Date:</label>
+                    <input type="date">
+                </div>
+            </div>
+        </div>
+
+        <div class="property-section">
+            <h3>This section is for Property Office Personnel only</h3>
+            
+            <div class="property-row">
+                <div class="property-field">
+                    <label>Inspecting/Receiving Property Personnel Name & Signature:</label>
+                    <input type="text">
+                </div>
+                <div class="property-field">
+                </div>
+            </div>
+
+            <div class="property-row">
+                <div class="property-field">
+                    <label>Actual Date Received:</label>
+                    <input type="text">
+                </div>
+                <div class="property-field">
+                    <label>Actual Time Received:</label>
+                    <input type="text">
+                </div>
+            </div>
+
+            <div class="action-field">
+                <label>Action(s) Taken:</label>
+                <input type="text">
+                <input type="text">
+                <input type="text">
+            </div>
+        </div>
+
+        <div class="footer">
+            <div class="noted-by">
+                Noted by:
+            </div>
+
+            <div class="signature-section">
+                <div class="signature-name">IAN P. ABUZO, CPA, MAIA</div>
+                <div class="signature-title">Accounting and Finance Office Head</div>
+                <div class="signature-line">
+                    <span class="signature-date">_____/_____/_____</span>
+                </div>
+            </div>
+
+            <div class="contact-info">
+                Barangay 5, San Francisco, Agusan del Sur, Philippines 8501 | +63 85 8390321 | +63 85 9855006
+            </div>
+        </div>
+    </div>
+</body>
+</html>

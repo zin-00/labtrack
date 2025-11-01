@@ -34,4 +34,30 @@ class ProfileController extends Controller
             'message' => 'Profile updated successfully'
         ]);
     }
+
+    public function updatePassword(Request $request)
+    {
+        $data = $request->validate([
+            'current_password' => 'required|string',
+            'new_password' => 'required|string|min:8|confirmed:new_password_confirmation',
+            'new_password_confirmation' => 'required|string|min:8',
+        ]);
+
+        $user = $request->user();
+
+        // Verify current password
+        if (!password_verify($data['current_password'], $user->password)) {
+            return response()->json([
+                'message' => 'Current password is incorrect'
+            ], 422);
+        }
+
+        // Update password
+        $user->password = bcrypt($data['new_password']);
+        $user->save();
+
+        return response()->json([
+            'message' => 'Password changed successfully'
+        ]);
+    }
 }

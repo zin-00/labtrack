@@ -189,7 +189,7 @@ public function update(Request $request, $id){
         //Dispatch events
         AuditEvent::dispatch($audit_log);
         ComputerStatusUpdated::dispatch($computer->id, null);
-        ComputerUnlockRequested::dispatch($computer);
+        ComputerUnlockRequested::dispatch($computer, null);
 
         return response()->json([
             'message'      => 'Computer unlocked by admin successfully',

@@ -103,4 +103,8 @@ class Student extends Model
     {
         return $this->hasMany(ComputerStudent::class);
     }
+    public function reports(): HasMany
+    {
+        return $this->hasMany(Report::class);
+    }
 }

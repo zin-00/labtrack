@@ -11,6 +11,7 @@ import {
     XCircleIcon,
     CheckCircleIcon
 } from '@heroicons/vue/24/outline';
+import LoaderSpinner from '../../components/spinner/LoaderSpinner.vue'
 
 // Store initialization
 const requestAccess = useRequestAccessStore();
@@ -111,7 +112,9 @@ onMounted(() => {
 
 <template>
     <AuthenticatedLayout>
-        <div class="min-h-screen bg-gray-50">
+        <div class="py-4 max-w-7xl mx-auto sm:px-4 bg-white min-h-screen relative">
+
+            <LoaderSpinner :is-loading="isLoading" subMessage="Please wait while we fetch your data" />
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <!-- Header Section -->
                 <div class="mb-8">

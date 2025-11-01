@@ -18,10 +18,9 @@ const scrollToSection = (sectionId) => {
           <div class="flex items-center justify-between h-16">
             <!-- Logo -->
             <div class="flex items-center space-x-3">
-              <div class="w-12 h-12 rounded flex items-center justify-center">
-                <img src="../assets/LABTrack.png" alt="" srcset="">
+              <div class="w-35 h-auto rounded flex items-center justify-center">
+                <img src="../assets/lb5.png" alt="" srcset="">
               </div>
-                  <p class="font-[Orbitron] text-sm font-bold">LAB<span class="text-[#12e19f] ">TRACK</span></p>
             </div>
 
             <!-- Navigation Links -->
@@ -74,18 +73,12 @@ const scrollToSection = (sectionId) => {
           <div class="max-w-4xl mx-auto text-center">
             <!-- Main Logo & Title -->
             <div class="mb-8">
-              <div class="w-25 h-25 rounded-lg flex items-center justify-center mx-auto mb-4">
-                  <img src="../assets/LABTrackv2.png" alt="" srcset="">
+              <div class="w-80 h-auto flex items-center justify-center mx-auto mb-6">
+                  <img src="../assets/lbv6.png" alt="LabTrack" class="w-full h-full object-contain">
               </div>
-              <h1 class="text-4xl md:text-5xl font-bold mb-2 font-[Orbitron]">
-                LAB<span class="text-[#12e19f]">TRACK</span>
-              </h1>
-              <p class="text-sm text-gray-500 uppercase tracking-wider mb-4">
+              <p class="text-sm text-gray-500 uppercase tracking-wider mb-2">
                 Computer Laboratory Tracker
               </p>
-              <!-- <p class="text-gray-500 text-sm">
-                Saint Francis Xavier College
-              </p> -->
             </div>
 
             <!-- Subtitle -->

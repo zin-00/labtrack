@@ -8,6 +8,7 @@ class BrowserActivity extends Model
 {
     protected $fillable = [
         'ip_address',
+        'student_id',
         'computer_id',
         'browser_name',
         'title',

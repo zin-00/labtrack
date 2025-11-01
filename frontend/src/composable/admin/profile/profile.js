@@ -24,9 +24,9 @@ export const useAdminProfileStore = defineStore('profile', () => {
 
     const updateAdminProfile = async (id, data) => {
         try {
-            const response = await axios.put(`${api}/admin/profile/${id}`, data, getAuthHeader());
+            const response = await axios.put(`${api}/profile`, data, getAuthHeader());
             success(response.data.message || 'Profile updated successfully!');
-            console.log('Updated profile data:', response.data.admin);
+            console.log('Updated profile data:', response.data);
         } catch (err) {
             console.error('Error updating profile:', err);
             error('Failed to update profile');
@@ -34,7 +34,7 @@ export const useAdminProfileStore = defineStore('profile', () => {
     }
     const changeAdminPassword = async (id, data) => {
         try {
-            const response = await axios.put(`${api}/admin/profile/${id}/change-password`, data, getAuthHeader());
+            const response = await axios.put(`${api}/profile/password`, data, getAuthHeader());
             success(response.data.message || 'Password changed successfully!');
             console.log('Password change response:', response.data);
         } catch (err) {

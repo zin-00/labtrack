@@ -101,4 +101,36 @@ class AuthController extends Controller
             'message' => 'User retrieved successfully'
         ]);
     }
+
+    public function getUserLoginHistory(Request $request)
+    {
+        $user = $request->user();
+
+        // Get login audit logs for the current user from the last few weeks
+        $loginHistory = AuditLogs::where('user_id', $user->id)
+            ->where('action', 'login')
+            ->where('created_at', '>=', now()->subWeeks(4))
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get();
+
+        // Get the last login (second most recent, as the current session is the most recent)
+        $lastLogin = AuditLogs::where('user_id', $user->id)
+            ->where('action', 'login')
+            ->orderBy('created_at', 'desc')
+            ->skip(1)
+            ->first();
+
+        // Count total logins
+        $totalLogins = AuditLogs::where('user_id', $user->id)
+            ->where('action', 'login')
+            ->count();
+
+        return response()->json([
+            'login_history' => $loginHistory,
+            'last_login' => $lastLogin,
+            'total_logins' => $totalLogins,
+            'message' => 'Login history retrieved successfully'
+        ]);
+    }
 }

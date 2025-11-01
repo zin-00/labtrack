@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('browser_activities', function (Blueprint $table) {
             $table->id();
             $table->string('ip_address');
+            $table->string('student_id')->nullable();
             $table->unsignedBigInteger('computer_id');
             $table->string('browser_name')->nullable();
             $table->string('title')->nullable();

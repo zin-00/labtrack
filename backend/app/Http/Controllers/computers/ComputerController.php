@@ -269,7 +269,7 @@ class ComputerController extends Controller
 
         // event(new ComputerUnlockRequested($computer->id, $student->id));
         ComputerStatusUpdated::dispatch($computer->id, $student->id);
-        ComputerUnlockRequested::dispatch($computer);
+        ComputerUnlockRequested::dispatch($computer, $request->input('rfid_uid'));
 
         return response()->json([
             'message' => 'Computer state updated successfully',
@@ -512,7 +512,7 @@ public function unlockAssignedComputer(Request $request){
     }
 
     ScanEvent::dispatch($student);
-    ComputerUnlockRequested::dispatch($computer);
+    ComputerUnlockRequested::dispatch($computer,$request->input('rfid_uid'));
 
     return response()->json([
         'message' => 'Computers unlocked successfully',

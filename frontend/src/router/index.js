@@ -22,13 +22,14 @@ import BrowserActivity from '../pages/activity/BrowserActivity.vue'
 import ComputerActivity from '../pages/activity/ComputerActivity.vue'
 import AuditLogs from '../pages/activity/AuditLogs.vue'
 import WorkStationMapping from '../pages/users/WorkStationMapping.vue'
+import LoginCloud from '../pages/auth/LoginCloud.vue'
 
 
 
 
 const routes = [
   { path: '',                       name: 'Home',               component: Home },
-  { path: '/login',                 name: 'login',              component: Login },
+  { path: '/login',                 name: 'login',              component: LoginCloud },
   { path: '/register',              name: 'register',           component: Register },
   { path: '/request-account',       name: 'request-account',    component: RequestForm },
   { path: '/profile',               name: 'profile',            component: Profile,           meta: { requiresAuth: true }},
@@ -50,7 +51,6 @@ const routes = [
   { path: '/audit-logs',            name: 'audit-logs',         component: AuditLogs,         meta: { requiresAuth: true }},
   { path: '/scan',                  name: 'scan',               component: Scan},
   { path: '/workstation-mapping',   name: 'workstation-mapping',component: WorkStationMapping, meta: { requiresAuth: true }},
-
 ]
 
 const router = createRouter({

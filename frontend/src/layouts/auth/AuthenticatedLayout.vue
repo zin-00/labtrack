@@ -88,7 +88,6 @@ const SideItems = ref([
       { id: 'audit-logs',       label: 'Audit Logs',        icon: SquareActivityIcon,           to: '/audit-logs'},
       { id: 'computer_activity',label: 'Computer Activity', icon: ComputerDesktopIcon,          to: '/computer-activity'},
       { id: 'browser_activity', label: 'Browser Activity',  icon: EarthIcon ,                   to: '/browser-activity'},
-      { id: 'heartbeat',        label: 'Heartbeat',         icon: ActivityIcon,}
   ]},
   { id: 'request_access',       label: 'Access Requests',   icon: MailIcon,                     to: '/request-access'},
   { id: 'reports',              label: 'Reports',           icon: StickyNoteIcon,               to: '/reports'}
@@ -178,12 +177,9 @@ onUnmounted(() => {
                     <div class="flex h-16 justify-between items-center">
                         <!-- Logo - Always visible -->
                         <div class="flex items-center">
-                            <div class="flex items-center space-x-3">
-                                <div class="flex items-center justify-center">
-                                    <img src="/src/assets/LABTrackv2.png" alt="LABTrack Logo" class="h-8 w-8 sm:h-10 sm:w-10">
-                                </div>
-                                <p class="font-[Orbitron] text-sm font-bold">LAB<span class="text-[#12e19f]">TRACK</span></p>
-                            </div>
+                  <div class="w-35 h-auto rounded flex items-center justify-center">
+                <img src="../../assets/lb5.png" alt="" srcset="">
+              </div>
                         </div>
 
                         <!-- User Menu -->

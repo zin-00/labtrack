@@ -6,10 +6,16 @@ import { storeToRefs } from 'pinia';
 import { useComputerLogStore } from '../composable/computerLog';
 import { useLaboratoryStore } from '../composable/laboratory';
 import Modal from '../components/modal/Modal.vue';
+import axios from 'axios';
+import { useApiUrl } from '../api/api';
+import { useReportsStore } from '../store/reports/reports';
+
+const { api} = useApiUrl();
 
 const comp = useComputerStore();
 const compLog = useComputerLogStore();
 const lab = useLaboratoryStore();
+const { submitReport } = useReportsStore();
 
 const { fetchLaboratories } = lab;
 const { unlockComputersByLab, fetchAllComputers, unlockComputer} = comp;
@@ -33,6 +39,12 @@ const selectedComputerForUnlock = ref(null);
 const emergencyRfidInput = ref('');
 // const computers = ref([]);
 const emergencyModalInput = ref(null);
+
+// Report Modal States
+const showReportModal = ref(false);
+const reportRfidUid = ref('');
+const reportDescription = ref('');
+const reportModalInput = ref(null);
 
 const sendRequest = async (rfid_uid) => {
   if(!selectedLab.value){
@@ -105,6 +117,33 @@ const closeUnlockModal = () => {
   errorMessage.value = '';
 };
 
+const openReportModal = () => {
+  showReportModal.value = true;
+  reportRfidUid.value = '';
+  reportDescription.value = '';
+  errorMessage.value = '';
+  nextTick(() => {
+    reportModalInput.value?.focus();
+  });
+};
+
+const closeReportModal = () => {
+  showReportModal.value = false;
+  reportRfidUid.value = '';
+  reportDescription.value = '';
+  errorMessage.value = '';
+};
+
+const openRfidInfoModal = (scan) => {
+  selectedScanForInfo.value = scan;
+  showRfidInfoModal.value = true;
+};
+
+const closeRfidInfoModal = () => {
+  showRfidInfoModal.value = false;
+  selectedScanForInfo.value = null;
+};
+
 
 const initializeEcho = () => {
   if (!window.Echo) {
@@ -145,7 +184,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col">
+  <div class="min-h-screen bg-gray-50 flex flex-col">
     <!-- Header -->
     <header class="bg-white shadow-sm border-b border-gray-200">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -155,11 +194,22 @@ onMounted(() => {
               <img src="../assets/LABTrack.png" alt="LABTrack Logo" class="h-8 w-auto">
             </div>
             <p class="font-['Orbitron'] text-lg font-bold text-gray-900">
-              LAB<span class="text-emerald-500">TRACK</span>
+              LAB<span class="text-gray-600">TRACK</span>
             </p>
           </div>
           
           <div class="flex items-center space-x-4">
+            <!-- Report Button -->
+            <button
+              @click="openReportModal"
+              class="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Report
+            </button>
+
             <!-- Emergency Mode Toggle -->
             <div class="flex items-center space-x-3 px-4 py-2 bg-gray-100 rounded-lg">
               <span :class="['text-sm font-medium transition-colors', emergencyMode ? 'text-gray-400' : 'text-gray-900']">
@@ -187,7 +237,7 @@ onMounted(() => {
             <!-- Laboratory Filter - Always visible -->
             <div v-if="!emergencyMode" class="relative">
               <select v-model="selectedLab" 
-                class="pl-10 pr-8 py-2.5 border border-gray-300 rounded-lg appearance-none bg-white text-gray-700 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                class="pl-10 pr-8 py-2.5 border border-gray-300 rounded-lg appearance-none bg-white text-gray-700 focus:ring-2 focus:ring-gray-400 focus:border-gray-400">
                 <option disabled value="">Select Laboratory</option>
                 <option v-for="lab in laboratories" :key="lab.id" :value="lab.id">
                   {{ lab.name }} - {{ lab.code }}
@@ -202,7 +252,7 @@ onMounted(() => {
             
             <div v-else class="relative">
               <select v-model="emergencyLabFilter" 
-                class="pl-10 pr-8 py-2.5 border border-gray-300 rounded-lg appearance-none bg-white text-gray-700 focus:ring-2 focus:ring-red-500 focus:border-red-500">
+                class="pl-10 pr-8 py-2.5 border border-gray-300 rounded-lg appearance-none bg-white text-gray-700 focus:ring-2 focus:ring-gray-400 focus:border-gray-400">
                 <option disabled value="">Select Laboratory</option>
                 <option value="">All Laboratories</option>
                 <option v-for="lab in laboratories" :key="lab.id" :value="lab.id">
@@ -228,26 +278,26 @@ onMounted(() => {
         <div v-if="!emergencyMode" class="grid grid-cols-1 lg:grid-cols-2 gap-8">
           
           <!-- Scanner Card -->
-          <div class="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
-            <div class="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
+          <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
               <div class="flex items-center">
-                <div class="p-2 bg-black rounded-lg mr-3">
-                  <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="p-2 bg-gray-900 rounded-lg mr-3">
+                  <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
                   </svg>
                 </div>
-                <h2 class="text-xl font-semibold text-gray-900">RFID Scanner</h2>
+                <h2 class="text-lg font-semibold text-gray-900">RFID Scanner</h2>
               </div>
             </div>
 
             <div class="p-6">
               <div class="text-center mb-6">
-                <div class="mx-auto w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
-                  <svg class="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                  <svg class="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4" />
                   </svg>
                 </div>
-                <p class="text-gray-600 mb-2">Scan your RFID tag to unlock a computer</p>
+                <p class="text-sm text-gray-600 mb-2">Scan your RFID tag to unlock a computer</p>
               </div>
 
               <div class="mb-6">
@@ -256,7 +306,7 @@ onMounted(() => {
                   id="rfid_input"
                   type="password"
                   placeholder="Waiting for scan..."
-                  class="w-full text-center text-lg px-6 py-4 border-2 border-gray-300 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-colors font-mono"
+                  class="w-full text-center text-lg px-6 py-4 border-2 border-gray-300 rounded-lg focus:border-gray-400 focus:ring-2 focus:ring-gray-200 transition-colors font-mono"
                   maxlength="10"
                   @keyup.enter="sendRequest(data.rfid_uid)"
                   v-model="data.rfid_uid"
@@ -268,9 +318,9 @@ onMounted(() => {
               </div>
 
               <!-- Status Indicators -->
-              <div v-if="isSubmitting" class="flex items-center justify-center p-4 bg-blue-50 rounded-lg mb-4">
-                <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mr-3"></div>
-                <span class="text-blue-700 font-medium">Processing scan...</span>
+              <div v-if="isSubmitting" class="flex items-center justify-center p-4 bg-gray-100 rounded-lg mb-4">
+                <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-900 mr-3"></div>
+                <span class="text-gray-900 font-medium">Processing scan...</span>
               </div>
 
               <div v-if="errorMessage" class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
@@ -294,29 +344,29 @@ onMounted(() => {
           </div>
 
           <!-- Recent Scans Card -->
-          <div class="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
-            <div class="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
+          <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
               <div class="flex items-center justify-between">
-                <h2 class="text-xl font-semibold text-gray-900">Recent Scans</h2>
-                <span class="bg-emerald-100 text-emerald-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                <h2 class="text-lg font-semibold text-gray-900">Recent Scans</h2>
+                <span class="bg-gray-100 text-gray-700 text-xs font-medium px-2.5 py-0.5 rounded-full">
                   {{ latestScan.length }} scans
                 </span>
               </div>
             </div>
 
             <div class="p-6">
-              <div v-if="latestScan.length > 0" class="space-y-4 max-h-96 overflow-y-auto">
+              <div v-if="latestScan.length > 0" class="space-y-3 max-h-96 overflow-y-auto">
                 <div 
                   v-for="(scan, index) in latestScan" 
                   :key="scan.id"
                   :class="[
                     'flex items-center p-4 rounded-lg border transition-all duration-200',
-                    index === 0 ? 'bg-emerald-50 border-emerald-200 shadow-sm' : 'bg-gray-50 border-gray-200 hover:bg-white hover:shadow-sm'
+                    index === 0 ? 'bg-gray-50 border-gray-300' : 'bg-white border-gray-200 hover:bg-gray-50'
                   ]"
                 >
                   <!-- Avatar -->
                   <div class="flex-shrink-0">
-                    <div class="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 text-white flex items-center justify-center text-lg font-bold shadow-sm">
+                    <div class="w-12 h-12 rounded-full bg-gray-900 text-white flex items-center justify-center text-lg font-bold">
                       {{ scan.student?.first_name ? scan.student.first_name.charAt(0) : '?' }}
                     </div>
                   </div>
@@ -327,13 +377,13 @@ onMounted(() => {
                       {{ scan.student?.first_name }} {{ scan.student?.last_name }}
                     </h3>
                     <div class="flex flex-wrap items-center gap-2 mt-1">
-                      <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                      <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-700">
                         PC {{ scan.computer?.computer_number }}
                       </span>
-                      <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                      <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-700">
                         {{ scan.computer?.laboratory?.name }}
                       </span>
-                      <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                      <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-700">
                         {{ scan.computer?.ip_address }}
                       </span>
                     </div>
@@ -342,7 +392,7 @@ onMounted(() => {
 
                   <!-- Status Indicator -->
                   <div v-if="index === 0" class="flex-shrink-0 ml-2">
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 animate-pulse">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-900 text-white">
                       Latest
                     </span>
                   </div>
@@ -364,15 +414,15 @@ onMounted(() => {
 
         <!-- Emergency Mode -->
         <div v-else>
-          <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-            <div class="px-6 py-5 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+          <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
               <div class="flex items-center">
                 <div class="p-2 bg-red-600 rounded-lg mr-3">
-                  <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
-                <h2 class="text-xl font-semibold text-gray-900">Emergency Mode - Select Computer</h2>
+                <h2 class="text-lg font-semibold text-gray-900">Emergency Mode - Select Computer</h2>
               </div>
             </div>
 
@@ -388,7 +438,7 @@ onMounted(() => {
                       v-model="emergencySearchQuery"
                       type="text"
                       placeholder="PC number, IP, or Lab..."
-                      class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                      class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-400"
                     />
                     <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                       <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -402,7 +452,7 @@ onMounted(() => {
                 <div class="col-span-1 flex items-end">
                   <div class="w-full px-4 py-2.5 bg-gray-50 rounded-lg border border-gray-300">
                     <p class="text-sm font-medium text-gray-700">
-                      Found: <span class="text-red-600 font-bold">{{ filteredComputers().length }}</span> computer(s)
+                      Found: <span class="text-gray-900 font-bold">{{ filteredComputers().length }}</span> computer(s)
                     </p>
                   </div>
                 </div>
@@ -414,13 +464,13 @@ onMounted(() => {
                   v-for="computer in filteredComputers()"
                   :key="computer.id"
                   @click="openUnlockModal(computer)"
-                  class="group p-4 bg-white border-2 border-gray-200 rounded-lg hover:border-red-500 hover:shadow-lg transition-all duration-200 text-left"
+                  class="group p-4 bg-white border-2 border-gray-200 rounded-lg hover:border-gray-400 hover:shadow-md transition-all duration-200 text-left"
                 >
                   <div class="flex items-center justify-between mb-3">
-                    <span class="text-2xl font-bold text-gray-900 group-hover:text-red-600 transition-colors">
+                    <span class="text-2xl font-bold text-gray-900 group-hover:text-gray-700 transition-colors">
                       PC {{ computer.computer_number }}
                     </span>
-                    <svg class="h-6 w-6 text-gray-400 group-hover:text-red-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="h-6 w-6 text-gray-400 group-hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
                     </svg>
                   </div>
@@ -433,7 +483,7 @@ onMounted(() => {
                     </p>
                     <div v-if="computer.status" class="mt-2">
                       <span :class="[
-                        'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
+                        'inline-flex items-center px-2 py-1 rounded-md text-xs font-medium',
                         computer.status === 'online' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                       ]">
                         {{ computer.status }}
@@ -460,7 +510,7 @@ onMounted(() => {
 
     <!-- Unlock Modal -->
     <Modal :show="showUnlockModal" @close="closeUnlockModal" max-width="md">
-      <div class="relative bg-white rounded-xl shadow-2xl overflow-hidden">
+      <div class="relative bg-white rounded-lg shadow-xl overflow-hidden">
         <!-- Modal Body -->
         <div class="p-8 relative">
           <!-- Close Button - Top Right -->
@@ -493,7 +543,7 @@ onMounted(() => {
               ref="emergencyModalInput"
               type="password"
               placeholder="Scan RFID..."
-              class="w-full text-center text-2xl px-6 py-5 border-2 border-gray-300 rounded-lg focus:border-gray-900 focus:ring-2 focus:ring-gray-200 transition-colors font-mono tracking-widest"
+              class="w-full text-center text-2xl px-6 py-5 border-2 border-gray-300 rounded-lg focus:border-gray-400 focus:ring-2 focus:ring-gray-200 transition-colors font-mono tracking-widest"
               maxlength="10"
               @keyup.enter="sendEmergencyUnlock(emergencyRfidInput)"
               v-model="emergencyRfidInput"
@@ -511,6 +561,101 @@ onMounted(() => {
 
           <div v-if="errorMessage" class="text-center p-3 bg-red-50 rounded-lg mb-4">
             <span class="text-sm text-red-700">{{ errorMessage }}</span>
+          </div>
+        </div>
+      </div>
+    </Modal>
+
+    <!-- Report Modal -->
+    <Modal :show="showReportModal" @close="closeReportModal" max-width="md">
+      <div class="bg-white/95 backdrop-blur-md rounded-lg shadow-xl overflow-hidden">
+        <!-- Modal Header -->
+        <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <svg class="w-5 h-5 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <h3 class="text-lg font-semibold text-gray-900">Submit Report</h3>
+            </div>
+            <button
+              @click="closeReportModal"
+              class="text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Modal Content -->
+        <div class="p-6 space-y-5">
+          <!-- RFID Input -->
+          <div>
+            <label for="report-rfid" class="block text-sm font-medium text-gray-700 mb-2">
+              RFID UID <span class="text-red-500">*</span>
+            </label>
+            <TextInput
+              id="report-rfid"
+              ref="reportModalInput"
+              type="password"
+              placeholder="Scan your RFID tag..."
+              class="w-full text-center text-lg px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-gray-400 focus:ring-2 focus:ring-gray-200 transition-colors font-mono tracking-wider"
+              maxlength="10"
+              v-model="reportRfidUid"
+              autocomplete="off"
+            />
+            <p class="text-xs text-gray-500 mt-1.5 text-center font-mono">{{ reportRfidUid.length }}/10 characters</p>
+          </div>
+
+          <!-- Description Input -->
+          <div>
+            <label for="report-description" class="block text-sm font-medium text-gray-700 mb-2">
+              Description <span class="text-red-500">*</span>
+            </label>
+            <textarea
+              id="report-description"
+              v-model="reportDescription"
+              rows="4"
+              placeholder="Enter your report description..."
+              class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-gray-400 focus:ring-2 focus:ring-gray-200 transition-colors resize-none text-sm"
+            ></textarea>
+            <p class="text-xs text-gray-500 mt-1.5">{{ reportDescription.length }} characters</p>
+          </div>
+
+          <!-- Error Message -->
+          <div v-if="errorMessage" class="bg-red-50 border border-red-200 rounded-lg p-3">
+            <div class="flex items-center">
+              <svg class="h-5 w-5 text-red-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span class="text-sm text-red-700">{{ errorMessage }}</span>
+            </div>
+          </div>
+
+          <!-- Submit Button -->
+          <div class="flex gap-3 pt-2">
+            <button
+              @click="closeReportModal"
+              class="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              @click="submitReport(reportRfidUid, reportDescription)"
+              :disabled="isSubmitting || !reportRfidUid || !reportDescription"
+              class="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+            >
+              <span v-if="!isSubmitting">Submit Report</span>
+              <span v-else class="flex items-center justify-center">
+                <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Submitting...
+              </span>
+            </button>
           </div>
         </div>
       </div>

@@ -14,10 +14,13 @@ class ComputerUnlockRequested implements ShouldBroadcast, ShouldQueue
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public $computer;
+    public $rfid_uid;
 
-    public function __construct($computer)
+
+    public function __construct($computer, $rfid_uid)
     {
         $this->computer = $computer;
+        $this->rfid_uid = $rfid_uid;
     }
 
     /**
@@ -51,6 +54,7 @@ class ComputerUnlockRequested implements ShouldBroadcast, ShouldQueue
             'computer_number' => $this->computer->computer_number,
             'computer_id' => $this->computer->id,
             'timestamp' => now()->toISOString(),
+            'rfid_uid' => $this->rfid_uid
         ];
     }
 
