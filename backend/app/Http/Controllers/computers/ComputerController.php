@@ -206,6 +206,52 @@ class ComputerController extends Controller
         ]);
     }
 
+    public function unassignLaboratory(Request $request)
+    {
+        $data = $request->validate([
+            'computer_ids'   => 'required|array',
+            'computer_ids.*' => 'integer|exists:computers,id',
+        ]);
+
+        // Fetch affected computers before update
+        $computers = Computer::whereIn('id', $data['computer_ids'])->get();
+
+        $oldData = [];
+        $newData = [];
+
+        foreach ($computers as $computer) {
+            $oldData[$computer->id] = ['laboratory_id' => $computer->laboratory_id];
+            $newData[$computer->id] = ['laboratory_id' => null];
+        }
+
+        // Perform update - set laboratory_id to null
+        Computer::whereIn('id', $data['computer_ids'])
+            ->update(['laboratory_id' => null]);
+
+        // Store audit log
+        $audit_logs = AuditLogs::create([
+            'user_id'     => $request->user()->id,
+            'action'      => 'update',
+            'entity_type' => 'Computer',
+            'entity_id'   => $data['computer_ids'],  // array, will be JSON encoded
+            'ip_address'  => $request->ip(),
+            'old_data'    => $oldData,
+            'new_data'    => $newData,
+            'description' => 'Unassigned computers from laboratory',
+        ]);
+
+        AuditEvent::dispatch($audit_logs);
+
+        // Broadcast update per computer
+        foreach ($computers as $computer) {
+            broadcast(new ComputerEvent('update', $computer->id));
+        }
+
+        return response()->json([
+            'message' => 'Computers unassigned successfully',
+        ]);
+    }
+
     public function destroy(Request $request, $id)
     {
         $computer = Computer::find($id);
@@ -588,89 +634,7 @@ public function unlockComputersByLab(Request $request, $labId, $rfid_uid)
     ]);
 }
 
-public function bulkAssign(Request $request)
-{
-    $request->validate([
-        'computer_id'   => 'required|exists:computers,id',
-        'student_ids'   => 'required|array',
-        'student_ids.*' => 'exists:students,id',
-    ]);
 
-    $computer = Computer::findOrFail($request->computer_id);
-    $labId    = $computer->laboratory_id;
-
-    $conflicts = [];
-    $successfulAssignments = [];
-
-    foreach ($request->student_ids as $studentId) {
-        // Check if student already assigned in THIS laboratory
-        $existsInSameLab = DB::table('computer_students as cs')
-            ->join('computers as c', 'c.id', '=', 'cs.computer_id')
-            ->where('cs.student_id', $studentId)
-            ->where('c.laboratory_id', $labId)
-            ->exists();
-
-        if ($existsInSameLab) {
-            $student = Student::find($studentId);
-            $conflicts[] = $student ? $student->first_name . ' ' . $student->last_name : "Student ID $studentId";
-            continue;
-        }
-
-        // Otherwise assign student to the selected computer
-        ComputerStudent::create([
-            'computer_id' => $computer->id,
-            'student_id'  => $studentId,
-            'laboratory_id' => $computer->laboratory_id,
-        ]);
-
-        $successfulAssignments[] = $studentId;
-    }
-
-    if (!empty($conflicts)) {
-        return response()->json([
-            'message'                 => 'Some students could not be assigned due to conflicts in this laboratory.',
-            'conflicts'               => $conflicts,
-            'successful_assignments'  => $successfulAssignments
-        ], 422);
-    }
-
-    return response()->json([
-        'message'        => 'All students assigned successfully',
-        'assigned_count' => count($successfulAssignments)
-    ]);
-}
-
-    // Unassign students from a computer
-    public function bulkUnassignStudents(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'computer_id' => 'required|exists:computers,id',
-            'student_ids' => 'required|array|min:1',
-            'student_ids.*' => 'exists:students,id'
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'message' => 'Validation failed',
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        $computer = Computer::findOrFail($request->computer_id);
-        $studentIds = $request->student_ids;
-
-        // Unassign students by setting unassign_at timestamp
-        $now = now();
-        $unassignedCount = ComputerStudent::where('computer_id', $computer->id)
-            ->whereIn('student_id', $studentIds)
-            ->whereNull('unassign_at')
-            ->update(['unassign_at' => $now]);
-
-        return response()->json([
-            'message' => $unassignedCount . ' student(s) unassigned successfully',
-            'unassigned_count' => $unassignedCount
-        ]);
-    }
 
   public function heartbeat($ip)
     {

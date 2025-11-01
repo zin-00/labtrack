@@ -51,7 +51,12 @@ class ConfigurationController extends Controller
             });
         }
 
-        $assignedStudents = $query->orderBy('created_at', 'desc')->paginate(10);
+        // Check if requesting all records (for PDF export)
+        if ($request->has('all') && $request->all === 'true') {
+            $assignedStudents = $query->orderBy('created_at', 'desc')->get();
+        } else {
+            $assignedStudents = $query->orderBy('created_at', 'desc')->paginate(10);
+        }
 
         return response()->json([
             'assigned_students' => $assignedStudents,

@@ -13,4 +13,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/laboratories/{id}', [LabController::class, 'update']);
     Route::delete('/laboratories/{id}', [LabController::class, 'destroy']);
     Route::post('/assign-laboratories', [ComputerController::class, 'assignLaboratory']);
+    Route::post('/unassign-laboratories', [ComputerController::class, 'unassignLaboratory']);
 });

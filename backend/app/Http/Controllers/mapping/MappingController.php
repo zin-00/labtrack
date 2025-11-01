@@ -172,4 +172,203 @@ class MappingController extends Controller
             'unassigned_count' => $unassignedCount
         ]);
     }
+
+    // Get available students for bulk assignment
+    public function getAvailableStudents(Request $request)
+    {
+        try {
+            $query = Student::with(['program', 'year_level', 'section']);
+
+            // Filter by status
+            if ($request->filled('status')) {
+                $query->where('status', $request->status);
+            } else {
+                $query->where('status', 'active');
+            }
+
+            // Filter by program
+            if ($request->filled('program_id')) {
+                $query->where('program_id', $request->program_id);
+            }
+
+            // Filter by year level
+            if ($request->filled('year_level_id')) {
+                $query->where('year_level_id', $request->year_level_id);
+            }
+
+            // Filter by section
+            if ($request->filled('section_id')) {
+                $query->where('section_id', $request->section_id);
+            }
+
+            // Search
+            if ($request->filled('search')) {
+                $search = $request->search;
+                $query->where(function ($q) use ($search) {
+                    $q->where('student_id', 'like', "%$search%")
+                      ->orWhere('first_name', 'like', "%$search%")
+                      ->orWhere('last_name', 'like', "%$search%");
+                });
+            }
+
+            // Filter unassigned students for a specific laboratory
+            if ($request->filled('unassigned_only') && $request->unassigned_only) {
+                if ($request->filled('laboratory_id')) {
+                    $labId = $request->laboratory_id;
+                    $assignedStudentIds = ComputerStudent::whereHas('computer', function ($q) use ($labId) {
+                        $q->where('laboratory_id', $labId);
+                    })->pluck('student_id')->toArray();
+
+                    $query->whereNotIn('id', $assignedStudentIds);
+                } else {
+                    // Get students not assigned to any computer
+                    $assignedStudentIds = ComputerStudent::pluck('student_id')
+                        ->toArray();
+                    $query->whereNotIn('id', $assignedStudentIds);
+                }
+            }
+
+            $students = $query->orderBy('last_name')->orderBy('first_name')->get();
+
+            return response()->json([
+                'students' => $students,
+                'total' => $students->count(),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error in getAvailableStudents: ' . $e->getMessage());
+            Log::error($e->getTraceAsString());
+            return response()->json([
+                'error' => 'Failed to fetch students',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }    // Get available computers for bulk assignment
+    public function getAvailableComputers(Request $request)
+    {
+        try {
+            $query = Computer::with(['laboratory']);
+
+            // Filter by laboratory
+            if ($request->filled('laboratory_id')) {
+                $query->where('laboratory_id', $request->laboratory_id);
+            }
+
+            // Search
+            if ($request->filled('search')) {
+                $search = $request->search;
+                $query->where(function ($q) use ($search) {
+                    $q->where('computer_number', 'like', "%$search%")
+                      ->orWhere('ip_address', 'like', "%$search%");
+                });
+            }
+
+            // Filter available computers (not fully assigned)
+            if ($request->filled('available_only') && $request->available_only) {
+                // Get computer IDs that have active assignments
+                $assignedComputerIds = ComputerStudent::pluck('computer_id')
+                    ->unique()
+                    ->toArray();
+
+                // Exclude computers that are already assigned
+                $query->whereNotIn('id', $assignedComputerIds);
+            }
+
+            $computers = $query->orderBy('computer_number')->get();
+
+            return response()->json([
+                'computers' => $computers,
+                'total' => $computers->count(),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error in getAvailableComputers: ' . $e->getMessage());
+            Log::error($e->getTraceAsString());
+            return response()->json([
+                'error' => 'Failed to fetch computers',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Bulk assign students to computers automatically
+    public function bulkAssignAuto(Request $request)
+    {
+        try {
+            $request->validate([
+                'student_ids' => 'required|array|min:1',
+                'student_ids.*' => 'exists:students,id',
+                'computer_ids' => 'required|array|min:1',
+                'computer_ids.*' => 'exists:computers,id',
+                'mode' => 'in:sequential,random',
+                'laboratory_id' => 'nullable|exists:laboratories,id'
+            ]);
+
+            $studentIds = $request->student_ids;
+            $computerIds = $request->computer_ids;
+            $mode = $request->mode ?? 'sequential';
+
+            // Shuffle for random mode
+            if ($mode === 'random') {
+                shuffle($computerIds);
+            }
+
+            $assignments = [];
+            $assignedCount = 0;
+            $skippedCount = 0;
+
+            // Assign each student to each computer (many-to-many)
+            foreach ($studentIds as $studentId) {
+                foreach ($computerIds as $computerId) {
+                    $computer = Computer::find($computerId);
+
+                    if (!$computer) {
+                        continue;
+                    }
+
+                    // Check if this exact student-computer pair already exists
+                    $exists = ComputerStudent::where('student_id', $studentId)
+                        ->where('computer_id', $computerId)
+                        ->exists();
+
+                    if ($exists) {
+                        $skippedCount++;
+                        continue; // Skip if already assigned to this specific computer
+                    }
+
+                    $assignments[] = [
+                        'student_id' => $studentId,
+                        'computer_id' => $computerId,
+                        'laboratory_id' => $computer->laboratory_id ?? $request->laboratory_id,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ];
+
+                    $assignedCount++;
+                }
+            }
+
+            if (count($assignments) > 0) {
+                ComputerStudent::insert($assignments);
+            }
+
+            $message = "$assignedCount assignment(s) created successfully";
+            if ($skippedCount > 0) {
+                $message .= " ($skippedCount skipped - already assigned)";
+            }
+
+            return response()->json([
+                'message' => $message,
+                'count' => $assignedCount,
+                'skipped' => $skippedCount,
+                'total_students' => count($studentIds),
+                'total_computers' => count($computerIds)
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error in bulkAssignAuto: ' . $e->getMessage());
+            Log::error($e->getTraceAsString());
+            return response()->json([
+                'error' => 'Failed to assign students',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
 }
