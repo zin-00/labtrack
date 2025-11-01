@@ -11,6 +11,7 @@ import { debounce } from 'lodash-es'
 import Button from '../../components/button/Button.vue';
 import { useComputerStore } from '../../composable/computers';
 import LoaderSpinner from '../../components/spinner/LoaderSpinner.vue';
+import Table from '../../components/table/Table.vue';
 
 
 const router = useRouter();
@@ -48,8 +49,14 @@ const {
 const { 
         fetchComputers,
         fetchNoLabComputers,
-        assignLabToComputer
+        assignLabToComputer,
+        unassignLabFromComputer
     } = cstore;
+
+const assignMode = ref('assign'); // 'assign' or 'unassign'
+const selectedLabForUnassign = ref('all');
+const assignedComputers = ref([]);
+const selectedComputersForUnassign = ref([]);
 
 const props = defineProps({
     LabName: String,
@@ -141,7 +148,23 @@ const toggleDropdown = (id) => {
 const openPopulateModal = (labId) => {
     currentLabId.value = labId;
     populateModal.value = true;
+    assignMode.value = 'assign';
     selectedComputers.value = [];
+    selectedComputersForUnassign.value = [];
+    loadUnassignedComputers();
+};
+
+const switchToUnassignMode = () => {
+    assignMode.value = 'unassign';
+    selectedComputersForUnassign.value = [];
+    searchQuery.value = '';
+    loadAssignedComputers();
+};
+
+const switchToAssignMode = () => {
+    assignMode.value = 'assign';
+    selectedComputers.value = [];
+    searchQuery.value = '';
     loadUnassignedComputers();
 };
 
@@ -166,6 +189,26 @@ const loadUnassignedComputers = () => {
     unassignedComputers.value = computers.value.filter(computer => !computer.laboratory_id);
 };
 
+const loadAssignedComputers = async () => {
+    await fetchComputers({
+        laboratory_id: currentLabId.value,
+        search: searchQuery.value
+    });
+    assignedComputers.value = computers.value;
+};
+
+const filteredAssignedComputers = computed(() => {
+    if (!searchQuery.value) {
+        return assignedComputers.value;
+    }
+    const query = searchQuery.value.toLowerCase();
+    return assignedComputers.value.filter(computer => 
+        computer.computer_number?.toLowerCase().includes(query) ||
+        computer.ip_address?.toLowerCase().includes(query) ||
+        computer.mac_address?.toLowerCase().includes(query)
+    );
+});
+
 const assignComputers = async () => {
     try {
         if (selectedComputers.value.length === 0) {
@@ -185,6 +228,42 @@ const assignComputers = async () => {
     } catch (error) {
         toast.error('Failed to assign computers');
         console.error(error);
+    }
+};
+
+const unassignComputers = async () => {
+    try {
+        if (selectedComputersForUnassign.value.length === 0) {
+            toast.error('Please select at least one computer to unassign');
+            return;
+        }
+
+        const success = await unassignLabFromComputer(selectedComputersForUnassign.value);
+        
+        if (success) {
+            toast.success(`${selectedComputersForUnassign.value.length} computer(s) unassigned successfully`);
+            selectedComputersForUnassign.value = [];
+            loadAssignedComputers();
+        }
+    } catch (error) {
+        toast.error('Failed to unassign computers');
+        console.error(error);
+    }
+};
+
+const toggleComputerForUnassign = (computerId) => {
+    if (selectedComputersForUnassign.value.includes(computerId)) {
+        selectedComputersForUnassign.value = selectedComputersForUnassign.value.filter(id => id !== computerId);
+    } else {
+        selectedComputersForUnassign.value.push(computerId);
+    }
+};
+
+const toggleAllForUnassign = (event) => {
+    if (event.target.checked) {
+        selectedComputersForUnassign.value = filteredAssignedComputers.value.map(computer => computer.id);
+    } else {
+        selectedComputersForUnassign.value = [];
     }
 };
 
@@ -381,74 +460,200 @@ onMounted(() => {
 
             <!-- Computer Assignment Modal -->
             <Modal :show="populateModal" @close="populateModal = false">
-                <div class="bg-white rounded-xl shadow-xl w-full max-w-4xl mx-auto relative overflow-hidden border border-gray-200">
+                <div class="bg-white rounded-xl shadow-xl w-full max-w-6xl mx-auto relative overflow-hidden border border-gray-200">
                     <!-- Modal Header -->
                     <div class="px-4 py-3 border-b border-gray-100 bg-white">
-                        <h2 class="text-base font-semibold text-gray-900">Assign Computers to Laboratory</h2>
-                        <p class="text-gray-600 text-xs mt-0.5">Select unassigned computers to add to this laboratory</p>
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h2 class="text-base font-semibold text-gray-900">Manage Laboratory Computers</h2>
+                                <p class="text-gray-600 text-xs mt-0.5">
+                                    {{ assignMode === 'assign' ? 'Select unassigned computers to add to this laboratory' : 'Select assigned computers to remove from this laboratory' }}
+                                </p>
+                            </div>
+                            
+                            <!-- Mode Toggle -->
+                            <div class="flex gap-1 bg-gray-100 p-1 rounded-lg">
+                                <button
+                                    @click="switchToAssignMode"
+                                    :class="[
+                                        'px-3 py-1.5 text-xs font-medium rounded-md transition-all',
+                                        assignMode === 'assign' 
+                                            ? 'bg-white text-gray-900 shadow-sm' 
+                                            : 'text-gray-600 hover:text-gray-900'
+                                    ]"
+                                >
+                                    Assign Mode
+                                </button>
+                                <button
+                                    @click="switchToUnassignMode"
+                                    :class="[
+                                        'px-3 py-1.5 text-xs font-medium rounded-md transition-all',
+                                        assignMode === 'unassign' 
+                                            ? 'bg-white text-gray-900 shadow-sm' 
+                                            : 'text-gray-600 hover:text-gray-900'
+                                    ]"
+                                >
+                                    Unassign Mode
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Modal Content -->
                     <div class="px-4 py-4">
-                        <div v-if="unassignedComputers.length > 0" class="max-h-96 overflow-y-auto rounded-lg border border-gray-200">
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50 sticky top-0">
-                                    <tr>
-                                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            <input
-                                                type="checkbox"
-                                                @change="toggleAllComputers($event)"
-                                                class="h-3.5 w-3.5 text-gray-600 focus:ring-gray-300 border-gray-300 rounded"
-                                            />
-                                        </th>
-                                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Computer #
-                                        </th>
-                                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            IP Address
-                                        </th>
-                                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            MAC Address
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody class="bg-white divide-y divide-gray-200">
-                                    <tr v-for="computer in unassignedComputers" :key="computer.id" class="hover:bg-gray-50 transition-colors">
-                                        <td class="px-4 py-3 whitespace-nowrap">
-                                            <input
-                                                type="checkbox"
-                                                :checked="selectedComputers.includes(computer.id)"
-                                                @change="toggleComputerSelection(computer.id)"
-                                                class="h-3.5 w-3.5 text-gray-600 focus:ring-gray-300 border-gray-300 rounded"
-                                            />
-                                        </td>
-                                        <td class="px-4 py-3 whitespace-nowrap">
-                                            <div class="text-xs font-medium text-gray-900">{{ computer.computer_number }}</div>
-                                        </td>
-                                        <td class="px-4 py-3 whitespace-nowrap">
-                                            <div class="text-xs text-gray-600 font-mono">{{ computer.ip_address }}</div>
-                                        </td>
-                                        <td class="px-4 py-3 whitespace-nowrap">
-                                            <div class="text-xs text-gray-600 font-mono">{{ computer.mac_address || 'N/A' }}</div>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                        <!-- Assign Mode Content -->
+                        <div v-if="assignMode === 'assign'">
+                            <div v-if="unassignedComputers.length > 0" class="max-h-96 overflow-y-auto rounded-lg border border-gray-200">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50 sticky top-0">
+                                        <tr>
+                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                <input
+                                                    type="checkbox"
+                                                    @change="toggleAllComputers($event)"
+                                                    class="h-3.5 w-3.5 text-gray-600 focus:ring-gray-300 border-gray-300 rounded"
+                                                />
+                                            </th>
+                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Computer #
+                                            </th>
+                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                IP Address
+                                            </th>
+                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                MAC Address
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        <tr v-for="computer in unassignedComputers" :key="computer.id" class="hover:bg-gray-50 transition-colors">
+                                            <td class="px-4 py-3 whitespace-nowrap">
+                                                <input
+                                                    type="checkbox"
+                                                    :checked="selectedComputers.includes(computer.id)"
+                                                    @change="toggleComputerSelection(computer.id)"
+                                                    class="h-3.5 w-3.5 text-gray-600 focus:ring-gray-300 border-gray-300 rounded"
+                                                />
+                                            </td>
+                                            <td class="px-4 py-3 whitespace-nowrap">
+                                                <div class="text-xs font-medium text-gray-900">{{ computer.computer_number }}</div>
+                                            </td>
+                                            <td class="px-4 py-3 whitespace-nowrap">
+                                                <div class="text-xs text-gray-600 font-mono">{{ computer.ip_address }}</div>
+                                            </td>
+                                            <td class="px-4 py-3 whitespace-nowrap">
+                                                <div class="text-xs text-gray-600 font-mono">{{ computer.mac_address || 'N/A' }}</div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <div v-else class="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
+                                <svg class="mx-auto h-10 w-10 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                                </svg>
+                                <h3 class="text-xs font-medium text-gray-900 mb-1">No unassigned computers</h3>
+                                <p class="text-xs text-gray-500">All computers are currently assigned to laboratories.</p>
+                            </div>
                         </div>
-                        
-                        <div v-else class="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
-                            <svg class="mx-auto h-10 w-10 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
-                            </svg>
-                            <h3 class="text-xs font-medium text-gray-900 mb-1">No unassigned computers</h3>
-                            <p class="text-xs text-gray-500">All computers are currently assigned to laboratories.</p>
+
+                        <!-- Unassign Mode Content -->
+                        <div v-else>
+                            <!-- Search Filter -->
+                            <div class="mb-3">
+                                <div class="relative">
+                                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                        </svg>
+                                    </div>
+                                    <input
+                                        v-model="searchQuery"
+                                        type="text"
+                                        placeholder="Search computers..."
+                                        class="block w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-200 focus:border-gray-400 text-sm transition-colors bg-white"
+                                    />
+                                </div>
+                            </div>
+
+                            <div v-if="filteredAssignedComputers.length > 0" class="max-h-96 overflow-y-auto rounded-lg border border-gray-200">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50 sticky top-0">
+                                        <tr>
+                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                <input
+                                                    type="checkbox"
+                                                    @change="toggleAllForUnassign($event)"
+                                                    :checked="selectedComputersForUnassign.length === filteredAssignedComputers.length && filteredAssignedComputers.length > 0"
+                                                    class="h-3.5 w-3.5 text-gray-600 focus:ring-gray-300 border-gray-300 rounded"
+                                                />
+                                            </th>
+                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Computer #
+                                            </th>
+                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                IP Address
+                                            </th>
+                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                MAC Address
+                                            </th>
+                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Status
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        <tr v-for="computer in filteredAssignedComputers" :key="computer.id" class="hover:bg-gray-50 transition-colors">
+                                            <td class="px-4 py-3 whitespace-nowrap">
+                                                <input
+                                                    type="checkbox"
+                                                    :checked="selectedComputersForUnassign.includes(computer.id)"
+                                                    @change="toggleComputerForUnassign(computer.id)"
+                                                    class="h-3.5 w-3.5 text-gray-600 focus:ring-gray-300 border-gray-300 rounded"
+                                                />
+                                            </td>
+                                            <td class="px-4 py-3 whitespace-nowrap">
+                                                <div class="text-xs font-medium text-gray-900">{{ computer.computer_number }}</div>
+                                            </td>
+                                            <td class="px-4 py-3 whitespace-nowrap">
+                                                <div class="text-xs text-gray-600 font-mono">{{ computer.ip_address }}</div>
+                                            </td>
+                                            <td class="px-4 py-3 whitespace-nowrap">
+                                                <div class="text-xs text-gray-600 font-mono">{{ computer.mac_address || 'N/A' }}</div>
+                                            </td>
+                                            <td class="px-4 py-3 whitespace-nowrap">
+                                                <span :class="[
+                                                    'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
+                                                    computer.status === 'active' ? 'bg-green-100 text-green-800' :
+                                                    computer.status === 'inactive' ? 'bg-gray-100 text-gray-800' :
+                                                    'bg-yellow-100 text-yellow-800'
+                                                ]">
+                                                    {{ computer.status }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <div v-else class="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
+                                <svg class="mx-auto h-10 w-10 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                                </svg>
+                                <h3 class="text-xs font-medium text-gray-900 mb-1">No assigned computers found</h3>
+                                <p class="text-xs text-gray-500">This laboratory has no computers assigned{{ searchQuery ? ' matching your search' : '' }}.</p>
+                            </div>
                         </div>
                     </div>
 
                     <!-- Modal Footer -->
                     <div class="px-4 py-3 bg-gray-50 border-t border-gray-100 flex justify-between items-center">
-                        <div v-if="selectedComputers.length > 0" class="text-xs text-gray-600">
+                        <div v-if="assignMode === 'assign' && selectedComputers.length > 0" class="text-xs text-gray-600">
                             {{ selectedComputers.length }} computer{{ selectedComputers.length !== 1 ? 's' : '' }} selected
+                        </div>
+                        <div v-else-if="assignMode === 'unassign' && selectedComputersForUnassign.length > 0" class="text-xs text-gray-600">
+                            {{ selectedComputersForUnassign.length }} computer{{ selectedComputersForUnassign.length !== 1 ? 's' : '' }} selected
                         </div>
                         <div v-else></div>
                         
@@ -457,14 +662,23 @@ onMounted(() => {
                                 @click="populateModal = false"
                                 class="px-3 py-2 text-xs text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                             >
-                                Cancel
+                                Close
                             </Button>
                             <Button
+                                v-if="assignMode === 'assign'"
                                 @click="assignComputers"
                                 :disabled="selectedComputers.length === 0"
                                 class="px-4 py-2 text-xs bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 Assign Selected ({{ selectedComputers.length }})
+                            </Button>
+                            <Button
+                                v-else
+                                @click="unassignComputers"
+                                :disabled="selectedComputersForUnassign.length === 0"
+                                class="px-4 py-2 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                Unassign Selected ({{ selectedComputersForUnassign.length }})
                             </Button>
                         </div>
                     </div>

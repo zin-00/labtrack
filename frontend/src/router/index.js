@@ -17,7 +17,6 @@ import RequestForm from '../pages/auth/RequestForm.vue'
 import Scan from '../pages/Scan.vue'
 import Sections from '../pages/settings/academic/Sections.vue'
 import Programs from '../pages/settings/academic/Programs.vue'
-import YearLevels from '../pages/settings/academic/YearLevels.vue'
 import BrowserActivity from '../pages/activity/BrowserActivity.vue'
 import ComputerActivity from '../pages/activity/ComputerActivity.vue'
 import AuditLogs from '../pages/activity/AuditLogs.vue'
@@ -45,7 +44,6 @@ const routes = [
   { path: '/request-access',        name: 'request',            component: RequestAccess,     meta: { requiresAuth: true }},
   { path: '/section',               name: 'section',            component: Sections,          meta: { requiresAuth: true }},
   { path: '/program',               name: 'program',            component: Programs,          meta: { requiresAuth: true }},
-  { path: '/year-level',            name: 'year-level',         component: YearLevels,        meta: { requiresAuth: true }},
   { path: '/browser-activity',      name: 'browser-activity',   component: BrowserActivity,   meta: { requiresAuth: true }},
   { path: '/computer-activity',     name: 'computer-activity',  component: ComputerActivity,  meta: { requiresAuth: true }},
   { path: '/audit-logs',            name: 'audit-logs',         component: AuditLogs,         meta: { requiresAuth: true }},

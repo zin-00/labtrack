@@ -49,10 +49,8 @@ const {
     addYearLevel,
     updateYearLevel,
     deleteYearLevel,
-    } = lvl;
-const {
-    yearLevels
-    } = toRefs(lvl);
+} = lvl;
+
 
 const {
     searchQuery,
@@ -70,6 +68,7 @@ const {
     deleteType,
     paginationSections,
     paginationYearLevels,
+    yearLevels,
 } = toRefs(states);
 
 const {

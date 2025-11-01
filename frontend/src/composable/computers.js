@@ -117,11 +117,23 @@ const { api, getAuthHeader } = useApiUrl();
         const response = await axios.post(`${api}/assign-laboratories`, {computer_ids: computerIds, laboratory_id: labId }, getAuthHeader());
         success(response.data.message || 'Lab assigned to computer successfully!');
         fetchNoLabComputers();
-
+        return true;
     } catch (err) {
       error('Failed to assign lab to computer.');
       console.error('Error assigning lab to computer:', err);
+      return false;
+    }
+  }
 
+  const unassignLabFromComputer = async (computerIds) => {
+    try {
+        const response = await axios.post(`${api}/unassign-laboratories`, {computer_ids: computerIds }, getAuthHeader());
+        success(response.data.message || 'Lab unassigned from computer successfully!');
+        return true;
+    } catch (err) {
+      error('Failed to unassign lab from computer.');
+      console.error('Error unassigning lab from computer:', err);
+      return false;
     }
   }
 
@@ -265,6 +277,7 @@ const unlockComputersByLab = async (labId, rfid_uid) => {
     unlockComputer,
     unlockAssignedComputer,
     assignLabToComputer,
+    unassignLabFromComputer,
     handleComputerEvent,
     unlockComputersByLab,
     unlockByAdmin,
