@@ -3,10 +3,10 @@
   import axios from 'axios';
   import {useApiUrl} from '../api/api';
   import { useToast } from 'vue-toastification';
-  
+
   const toast = useToast();
   const { api, getAuthHeader } = useApiUrl();
-  
+
   export const useStatusDistributionStore = defineStore('statusDistribution', () => {
 
     const onlineCount = ref(0);
@@ -18,11 +18,21 @@
     const inactiveCount = ref(0);
     const maintenanceCount = ref(0);
     const latestLogs = ref([]);
+    const topWebsites = ref([]);
+    const weeklySessionHours = ref([]);
+
+    // Student statistics
+    const studentStats = ref({
+      active: 0,
+      inactive: 0,
+      restricted: 0,
+      total: 0
+    });
 
     const computerCount = ref(0);
     const studentCount = ref(0);
-    const activeComputerCount = ref([]);   
-    const inactiveComputerCount = ref([]); 
+    const activeComputerCount = ref([]);
+    const inactiveComputerCount = ref([]);
     const maintenanceComputerCount = ref([]);
 
 
@@ -73,6 +83,18 @@
         inactiveCount.value = data.inactive_count || 0;
         maintenanceCount.value = data.maintenance_count || 0;
         latestLogs.value = data.latest_logs || [];
+        topWebsites.value = data.top_websites || [];
+        weeklySessionHours.value = data.weekly_session_hours || [];
+
+        // Student statistics
+        if (data.student_stats) {
+          studentStats.value = {
+            active: data.student_stats.active || 0,
+            inactive: data.student_stats.inactive || 0,
+            restricted: data.student_stats.restricted || 0,
+            total: data.student_stats.total || 0
+          };
+        }
 
 
 
@@ -96,6 +118,9 @@
         inactiveComputerCount,
         maintenanceComputerCount,
         latestLogs,
+        topWebsites,
+        weeklySessionHours,
+        studentStats,
       fetchStatusDistribution,
       fetchDataDistribution,
     };

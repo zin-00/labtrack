@@ -21,11 +21,6 @@ const states = useStates();
 const { fetchStatusDistribution, fetchDataDistribution } = func;
 const { selectedPeriod, selectedCampaignFilter, isLoading} = toRefs(states);
 
-// Add new refs for weekly data
-const weeklySessionData = ref([]);
-const weeklyPeakHours = ref([]);
-const averageSessionDuration = ref(0);
-
 const { 
   onlineCount,
   offlineCount,
@@ -37,6 +32,9 @@ const {
   inactiveComputerCount,
   maintenanceComputerCount,
   latestLogs,
+  topWebsites,
+  weeklySessionHours,
+  studentStats,
 } = toRefs(func);
 
 // Toast helper
@@ -146,9 +144,9 @@ const lineChartOptions = computed(() => ({
 const barChartSeries = computed(() => [
   { 
     name: 'Session Hours',
-    data: weeklySessionData.value.length > 0 
-      ? weeklySessionData.value 
-      : [156, 183, 167, 194, 172, 188, 201] // Fallback data
+    data: weeklySessionHours.value.length > 0 
+      ? weeklySessionHours.value 
+      : [0, 0, 0, 0, 0, 0, 0]
   }
 ]);
 
@@ -306,14 +304,6 @@ const getFullName = (log) => {
   return log.student_id || 'N/A'
 }
 
-const formatDate = (dateString) => {
-  if (!dateString) return 'N/A'
-  return new Date(dateString).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric'
-  })
-}
 
 const formatTime = (dateString) => {
   if (!dateString) return ''
@@ -348,23 +338,127 @@ const getTimeAgo = (dateString) => {
 
 // Calculate total weekly hours
 const totalWeeklyHours = computed(() => {
-  return weeklySessionData.value.reduce((a, b) => a + b, 0);
+  if (weeklySessionHours.value.length === 0) return 0;
+  return weeklySessionHours.value.reduce((a, b) => a + b, 0).toFixed(1);
 });
 
-const weeklyGrowth = computed(() => {
-  // You can calculate this from previous week data
-  return '+12.5%'; // Placeholder
+// Calculate peak day
+const peakDay = computed(() => {
+  if (weeklySessionHours.value.length === 0) return 'N/A';
+  
+  const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const maxHours = Math.max(...weeklySessionHours.value);
+  const maxIndex = weeklySessionHours.value.indexOf(maxHours);
+  
+  return maxIndex !== -1 ? days[maxIndex] : 'N/A';
 });
+
+// Calculate average session duration
+const averageSessionDuration = computed(() => {
+  if (weeklySessionHours.value.length === 0) return '0.0';
+  
+  const total = weeklySessionHours.value.reduce((a, b) => a + b, 0);
+  const avg = total / weeklySessionHours.value.filter(h => h > 0).length || 0;
+  
+  return avg.toFixed(1);
+});
+
+// Calculate weekly growth
+const weeklyGrowth = computed(() => {
+  if (weeklySessionHours.value.length < 7) return '+0%';
+  
+  // Compare last 3 days vs first 4 days
+  const lastThreeDays = weeklySessionHours.value.slice(4, 7).reduce((a, b) => a + b, 0);
+  const firstFourDays = weeklySessionHours.value.slice(0, 4).reduce((a, b) => a + b, 0);
+  
+  if (firstFourDays === 0) return '+0%';
+  
+  const growth = ((lastThreeDays / 3 - firstFourDays / 4) / (firstFourDays / 4)) * 100;
+  const sign = growth >= 0 ? '+' : '';
+  
+  return `${sign}${growth.toFixed(1)}%`;
+});
+
+// Student statistics computed properties
+const studentStatusSeries = computed(() => [
+  {
+    name: 'Students',
+    data: [
+      studentStats.value.active || 0,
+      studentStats.value.inactive || 0,
+      studentStats.value.restricted || 0
+    ]
+  }
+]);
+
+const studentStatusOptions = computed(() => ({
+  chart: {
+    type: 'bar',
+    toolbar: { show: false },
+    sparkline: { enabled: false }
+  },
+  plotOptions: {
+    bar: {
+      horizontal: true,
+      borderRadius: 6,
+      barHeight: '60%',
+      distributed: true,
+      dataLabels: {
+        position: 'top'
+      }
+    }
+  },
+  colors: ['#10B981', '#F43F5E', '#F59E0B'],
+  dataLabels: {
+    enabled: true,
+    textAnchor: 'start',
+    offsetX: 5,
+    style: {
+      fontSize: '12px',
+      fontWeight: 600,
+      colors: ['#fff']
+    },
+    formatter: function(val) {
+      return val;
+    }
+  },
+  xaxis: {
+    categories: ['Active', 'Inactive', 'Restricted'],
+    labels: {
+      style: { colors: '#6B7280', fontSize: '11px' }
+    }
+  },
+  yaxis: {
+    labels: {
+      style: { colors: '#6B7280', fontSize: '12px', fontWeight: 500 }
+    }
+  },
+  grid: {
+    show: true,
+    borderColor: '#F3F4F6',
+    strokeDashArray: 3,
+    xaxis: { lines: { show: true } },
+    yaxis: { lines: { show: false } }
+  },
+  legend: {
+    show: false
+  },
+  tooltip: {
+    theme: 'light',
+    y: {
+      formatter: function(val) {
+        const total = studentStats.value.total || 1;
+        const percentage = ((val / total) * 100).toFixed(1);
+        return val + ' students (' + percentage + '%)';
+      }
+    }
+  }
+}));
 
 onMounted(async () => {
   try {
     await fetchStatusDistribution();
     await loadDataDistribution();
-    
-    // Simulate fetching weekly session data
-    // Replace this with actual API call
-    weeklySessionData.value = [156, 183, 167, 194, 172, 188, 201];
-    averageSessionDuration.value = 2.3; // hours
   } catch (error) {
     console.error('Error loading data:', error);
     showError(error.message || 'Unknown error');
@@ -515,7 +609,7 @@ onMounted(async () => {
             <div class="mt-4 pt-3 border-t border-gray-100 grid grid-cols-3 gap-4 text-center">
               <div>
                 <div class="text-xs text-gray-500">Peak Day</div>
-                <div class="text-sm font-semibold text-gray-900 mt-0.5">Sunday</div>
+                <div class="text-sm font-semibold text-gray-900 mt-0.5">{{ peakDay }}</div>
               </div>
               <div>
                 <div class="text-xs text-gray-500">Avg/Day</div>
@@ -583,6 +677,269 @@ onMounted(async () => {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Student Status Distribution -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- Horizontal Bar Chart - Takes 2 columns -->
+          <div class="lg:col-span-2 bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h3 class="text-base font-semibold text-gray-900">Student Status Distribution</h3>
+                <p class="text-xs text-gray-500 mt-0.5">Registered student breakdown</p>
+              </div>
+              <router-link 
+                to="/students"
+                class="text-xs bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg font-medium hover:bg-gray-200 transition-colors inline-flex items-center gap-1"
+              >
+                <span>View All</span>
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+              </router-link>
+            </div>
+
+            <apexchart
+              height="200"
+              type="bar"
+              :options="studentStatusOptions"
+              :series="studentStatusSeries"
+            />
+
+            <div class="mt-4 pt-3 border-t border-gray-100 grid grid-cols-3 gap-4 text-center">
+              <div>
+                <div class="text-xs text-gray-500">Active Rate</div>
+                <div class="text-sm font-semibold text-green-600 mt-0.5">
+                  {{ studentStats.total > 0 ? ((studentStats.active / studentStats.total) * 100).toFixed(1) : 0 }}%
+                </div>
+              </div>
+              <div>
+                <div class="text-xs text-gray-500">Total Students</div>
+                <div class="text-sm font-semibold text-gray-900 mt-0.5">{{ studentStats.total }}</div>
+              </div>
+              <div>
+                <div class="text-xs text-gray-500">Restricted</div>
+                <div class="text-sm font-semibold text-amber-600 mt-0.5">{{ studentStats.restricted }}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Student Stats Cards -->
+          <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+            <div class="mb-4">
+              <h3 class="text-base font-semibold text-gray-900">Student Overview</h3>
+              <p class="text-xs text-gray-500 mt-0.5">Registration status</p>
+            </div>
+            
+            <div class="space-y-3">
+              <div class="p-3 rounded-lg bg-green-50 border border-green-100">
+                <div class="flex items-center justify-between">
+                  <div class="flex-1">
+                    <div class="text-xs text-gray-600 font-medium mb-1">Active Students</div>
+                    <div class="text-2xl font-bold text-green-600">{{ studentStats.active }}</div>
+                    <div class="mt-2 bg-green-200 rounded-full h-2 overflow-hidden">
+                      <div 
+                        class="bg-green-600 h-full rounded-full transition-all duration-500"
+                        :style="{ width: studentStats.total > 0 ? (studentStats.active / studentStats.total * 100) + '%' : '0%' }"
+                      ></div>
+                    </div>
+                  </div>
+                  <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center ml-3">
+                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              <div class="p-3 rounded-lg bg-red-50 border border-red-100">
+                <div class="flex items-center justify-between">
+                  <div class="flex-1">
+                    <div class="text-xs text-gray-600 font-medium mb-1">Inactive Students</div>
+                    <div class="text-2xl font-bold text-red-600">{{ studentStats.inactive }}</div>
+                    <div class="mt-2 bg-red-200 rounded-full h-2 overflow-hidden">
+                      <div 
+                        class="bg-red-600 h-full rounded-full transition-all duration-500"
+                        :style="{ width: studentStats.total > 0 ? (studentStats.inactive / studentStats.total * 100) + '%' : '0%' }"
+                      ></div>
+                    </div>
+                  </div>
+                  <div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center ml-3">
+                    <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              <div class="p-3 rounded-lg bg-amber-50 border border-amber-100">
+                <div class="flex items-center justify-between">
+                  <div class="flex-1">
+                    <div class="text-xs text-gray-600 font-medium mb-1">Restricted Students</div>
+                    <div class="text-2xl font-bold text-amber-600">{{ studentStats.restricted }}</div>
+                    <div class="mt-2 bg-amber-200 rounded-full h-2 overflow-hidden">
+                      <div 
+                        class="bg-amber-600 h-full rounded-full transition-all duration-500"
+                        :style="{ width: studentStats.total > 0 ? (studentStats.restricted / studentStats.total * 100) + '%' : '0%' }"
+                      ></div>
+                    </div>
+                  </div>
+                  <div class="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center ml-3">
+                    <svg class="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Top 3 Most Visited Websites -->
+        <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="text-base font-semibold text-gray-900">Top 3 Most Visited Websites</h3>
+              <p class="text-xs text-gray-500 mt-0.5">Most accessed sites in the lab</p>
+            </div>
+            <router-link 
+              to="/browser_activity"
+              class="text-xs bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg font-medium hover:bg-gray-200 transition-colors inline-flex items-center gap-1"
+            >
+              <span>View All</span>
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+              </svg>
+            </router-link>
+          </div>
+
+          <!-- Desktop View -->
+          <div class="hidden md:block overflow-x-auto">
+            <table class="w-full">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-4 py-2.5 text-xs font-semibold text-gray-700 text-left uppercase tracking-wider w-16">Rank</th>
+                  <th class="px-4 py-2.5 text-xs font-semibold text-gray-700 text-left uppercase tracking-wider">Website</th>
+                  <th class="px-4 py-2.5 text-xs font-semibold text-gray-700 text-left uppercase tracking-wider">URL</th>
+                  <th class="px-4 py-2.5 text-xs font-semibold text-gray-700 text-right uppercase tracking-wider w-32">Visits</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr 
+                  v-for="(website, index) in topWebsites" 
+                  :key="website.url"
+                  class="hover:bg-gray-50 transition-colors border-b border-gray-100"
+                >
+                  <td class="px-4 py-3">
+                    <div class="flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm"
+                         :class="index === 0 ? 'bg-yellow-100 text-yellow-700' : 
+                                 index === 1 ? 'bg-gray-100 text-gray-700' : 
+                                 'bg-orange-100 text-orange-700'">
+                      {{ index + 1 }}
+                    </div>
+                  </td>
+                  <td class="px-4 py-3">
+                    <p class="text-sm font-medium text-gray-900 truncate max-w-xs" :title="website.title">
+                      {{ website.title || 'Untitled' }}
+                    </p>
+                  </td>
+                  <td class="px-4 py-3">
+                    <a 
+                      :href="website.url" 
+                      target="_blank"
+                      class="text-sm text-blue-600 hover:text-blue-800 hover:underline truncate block max-w-md"
+                      :title="website.url"
+                    >
+                      {{ website.url }}
+                    </a>
+                  </td>
+                  <td class="px-4 py-3 text-right">
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold"
+                          :class="index === 0 ? 'bg-yellow-100 text-yellow-700' : 
+                                  index === 1 ? 'bg-gray-100 text-gray-700' : 
+                                  'bg-orange-100 text-orange-700'">
+                      <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/>
+                        <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"/>
+                      </svg>
+                      {{ website.visit_count }}
+                    </span>
+                  </td>
+                </tr>
+                
+                <!-- Empty State -->
+                <tr v-if="!topWebsites || topWebsites.length === 0">
+                  <td colspan="4" class="px-4 py-10 text-center">
+                    <div class="flex flex-col items-center gap-2">
+                      <div class="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center">
+                        <svg class="w-7 h-7 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
+                        </svg>
+                      </div>
+                      <div>
+                        <p class="text-sm font-medium text-gray-900">No website data available</p>
+                        <p class="text-xs text-gray-500 mt-0.5">Browser activity will appear here</p>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Mobile View -->
+          <div class="md:hidden space-y-3">
+            <div
+              v-for="(website, index) in topWebsites"
+              :key="website.url"
+              class="p-4 rounded-lg border"
+              :class="index === 0 ? 'bg-yellow-50 border-yellow-200' : 
+                      index === 1 ? 'bg-gray-50 border-gray-200' : 
+                      'bg-orange-50 border-orange-200'"
+            >
+              <div class="flex items-start justify-between mb-2">
+                <div class="flex items-center gap-3">
+                  <div class="flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm"
+                       :class="index === 0 ? 'bg-yellow-100 text-yellow-700' : 
+                               index === 1 ? 'bg-gray-100 text-gray-700' : 
+                               'bg-orange-100 text-orange-700'">
+                    {{ index + 1 }}
+                  </div>
+                  <div>
+                    <p class="text-sm font-semibold text-gray-900">{{ website.title || 'Untitled' }}</p>
+                  </div>
+                </div>
+                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold"
+                      :class="index === 0 ? 'bg-yellow-100 text-yellow-700' : 
+                              index === 1 ? 'bg-gray-100 text-gray-700' : 
+                              'bg-orange-100 text-orange-700'">
+                  <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/>
+                    <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"/>
+                  </svg>
+                  {{ website.visit_count }}
+                </span>
+              </div>
+              <a 
+                :href="website.url" 
+                target="_blank"
+                class="text-xs text-blue-600 hover:text-blue-800 hover:underline break-all"
+              >
+                {{ website.url }}
+              </a>
+            </div>
+
+            <!-- Empty State Mobile -->
+            <div v-if="!topWebsites || topWebsites.length === 0" class="text-center py-8">
+              <div class="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <svg class="w-7 h-7 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
+                </svg>
+              </div>
+              <p class="text-sm font-medium text-gray-900">No website data available</p>
+              <p class="text-xs text-gray-500 mt-0.5">Browser activity will appear here</p>
             </div>
           </div>
         </div>

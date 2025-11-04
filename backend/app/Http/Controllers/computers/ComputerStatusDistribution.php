@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Computer;
 use App\Models\ComputerLog;
 use App\Models\Student;
+use App\Models\BrowserActivity;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -26,6 +27,32 @@ class ComputerStatusDistribution extends Controller
             ->take(3)
             ->get();
 
+        // Get top 3 most visited websites
+        $topWebsites = BrowserActivity::select('url', 'title', DB::raw('COUNT(*) as visit_count'))
+            ->groupBy('url', 'title')
+            ->orderByDesc('visit_count')
+            ->take(3)
+            ->get();
+
+        // Get weekly session hours (last 7 days)
+        $weeklySessionHours = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $date = now()->subDays($i)->toDateString();
+            
+            // Calculate total session hours for this day
+            $totalSeconds = ComputerLog::whereDate('created_at', $date)
+                ->sum('uptime');
+            
+            // Convert seconds to hours (rounded to 1 decimal)
+            $hours = $totalSeconds > 0 ? round($totalSeconds / 3600, 1) : 0;
+            $weeklySessionHours[] = $hours;
+        }
+
+        // Get student status distribution
+        $activeStudents = Student::where('status', 'active')->count();
+        $inactiveStudents = Student::where('status', 'inactive')->count();
+        $restrictedStudents = Student::where('status', 'restricted')->count();
+        $totalStudents = Student::count();
 
         return response()->json([
             'locked_count' => $lockedCount,
@@ -36,6 +63,14 @@ class ComputerStatusDistribution extends Controller
             'inactive_count' => $inactiveCount,
             'computers' => $computers,
             'latest_logs' => $latestLogs,
+            'top_websites' => $topWebsites,
+            'weekly_session_hours' => $weeklySessionHours,
+            'student_stats' => [
+                'active' => $activeStudents,
+                'inactive' => $inactiveStudents,
+                'restricted' => $restrictedStudents,
+                'total' => $totalStudents,
+            ],
         ]);
     }
 

@@ -9,7 +9,7 @@ import Modal from '../../components/modal/Modal.vue';
 import StudentAssignmentModal from '../../components/modal/StudentAssignmentModal.vue';
 import { useComputerStore} from '../../composable/computers';
 import { useStates } from '../../composable/states';
-import { XIcon } from 'lucide-vue-next';
+import { XIcon, TrashIcon } from 'lucide-vue-next';
 import LoaderSpinner from '../../components/spinner/LoaderSpinner.vue';
 import { debounce } from 'lodash-es';
 const toast = useToast();
@@ -47,6 +47,10 @@ const {
       successMessage,
       searchQuery
       } = toRefs(states);
+
+// Delete modal state
+const showDeleteModal = ref(false);
+const computerToDelete = ref(null);
 
 const {
     fetchComputers,
@@ -165,16 +169,37 @@ const editComputer = (computer) => {
     is_lock: computer.is_lock ?? false
   });
   saveModal.value = true;
+  isDropdownOpen.value = null;
 };
 
-const deleteComputer_func = async (id) => {
-  try {
-    await deleteComputer(id);
-    applyFilters(); // Refresh with current filters
-  } catch (error) {
-    toast.error('Failed to delete computer.');
-    console.error(error);
+const openDeleteModal = (computer) => {
+  computerToDelete.value = computer;
+  showDeleteModal.value = true;
+  isDropdownOpen.value = false;
+};
+
+const closeDeleteModal = () => {
+  showDeleteModal.value = false;
+  computerToDelete.value = null;
+  isDropdownOpen.value = false;
+};
+
+const confirmDelete = async () => {
+  if (computerToDelete.value) {
+    try {
+      await deleteComputer(computerToDelete.value.id);
+      toast.success('Computer deleted successfully');
+      closeDeleteModal();
+      applyFilters();
+    } catch (error) {
+      toast.error('Failed to delete computer');
+      console.error(error);
+    }
   }
+};
+
+const deleteComputer_func = async (computer) => {
+  openDeleteModal(computer);
 };
 
 const clearError = () => {
@@ -392,7 +417,7 @@ watch(modalState, async (newVal) => {
             <button @click.stop="editComputer(computer)" class="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors">
               Edit
             </button>
-            <button @click.stop="deleteComputer_func(computer.id)" class="block w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 transition-colors">
+            <button @click.stop="deleteComputer_func(computer)" class="block w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 transition-colors">
               Delete
             </button>
           </div>
@@ -702,6 +727,71 @@ watch(modalState, async (newVal) => {
         @close="closeAssignmentModal"
         @assign="handleStudentAssignment"
       />
+
+      <!-- Delete Confirmation Modal -->
+      <Modal :show="showDeleteModal" @close="closeDeleteModal" max-width="md">
+        <div class="relative bg-white p-6 rounded-lg">
+          <!-- Icon -->
+          <div class="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-gray-100 rounded-full">
+            <TrashIcon class="w-6 h-6 text-gray-600" />
+          </div>
+
+          <!-- Modal header -->
+          <div class="text-center mb-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">
+              Delete Computer
+            </h3>
+            <p class="text-sm text-gray-600">
+              Are you sure you want to delete this computer? This action cannot be undone.
+            </p>
+          </div>
+
+          <!-- Computer info -->
+          <div v-if="computerToDelete" class="bg-gray-50 rounded-md p-4 mb-6">
+            <div class="flex items-start gap-3">
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-gray-900">
+                  Computer {{ computerToDelete.computer_number }}
+                </p>
+                <p class="text-xs text-gray-600 mt-1">
+                  IP: {{ computerToDelete.ip_address }}
+                </p>
+                <p class="text-xs text-gray-600 mt-1">
+                  Lab: {{ func.labs?.find(l => l.id === computerToDelete.laboratory_id)?.name || 'N/A' }}
+                </p>
+                <div class="mt-2">
+                  <span
+                    class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+                    :class="{
+                      'bg-green-100 text-green-800': computerToDelete.status === 'active',
+                      'bg-red-100 text-red-800': computerToDelete.status === 'inactive',
+                      'bg-yellow-100 text-yellow-800': computerToDelete.status === 'maintenance'
+                    }"
+                  >
+                    {{ computerToDelete.status }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Modal footer -->
+          <div class="flex gap-3">
+            <button
+              @click="closeDeleteModal"
+              class="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              @click="confirmDelete"
+              class="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-gray-900 rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 transition-colors"
+            >
+              Delete Computer
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   </AuthenticatedLayout>
 </template>

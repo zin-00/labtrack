@@ -1,7 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '../../layouts/auth/AuthenticatedLayout.vue';
 import { ref, reactive, onMounted, computed, toRefs } from 'vue';
-import { useToast } from 'vue-toastification';
 import { useReportsStore } from '../../store/reports/reports.js';
 import { debounce } from 'lodash-es';
 import dayjs from 'dayjs';
@@ -17,13 +16,13 @@ import {
 import LoaderSpinner from '../../components/spinner/LoaderSpinner.vue';
 import { useStates } from '../../composable/states';
 import { useRouter } from 'vue-router';
+import Modal from '../../components/modal/Modal.vue';
 
 const state = useStates();
 const reportStore = useReportsStore();
 const { reports, pagination, isLoading } = toRefs(state);
-const { fetchReports, } = reportStore;
+const { fetchReports, deleteReport } = reportStore;
 
-const toast = useToast();
 const router = useRouter();
 
 // Search and filters
@@ -36,6 +35,8 @@ const showFilters = ref(false);
 // Modal state
 const showModal = ref(false);
 const selectedReport = ref(null);
+const showDeleteModal = ref(false);
+const reportToDelete = ref(null);
 
 // Debounced filter application
 const applyFilters = debounce(() => {
@@ -73,15 +74,30 @@ const closeModal = () => {
     selectedReport.value = null;
 };
 
-const handleDeleteReport = async (reportId) => {
-    if (confirm('Are you sure you want to delete this report?')) {
+const openDeleteModal = (report) => {
+    reportToDelete.value = report;
+    showDeleteModal.value = true;
+};
+
+const closeDeleteModal = () => {
+    showDeleteModal.value = false;
+    reportToDelete.value = null;
+};
+
+const confirmDelete = async () => {
+    if (reportToDelete.value) {
         try {
-            await removeReport(reportId);
-            toast.success('Report deleted successfully');
+            await deleteReport(reportToDelete.value.id);
+            closeDeleteModal();
+            refreshReports();
         } catch (err) {
-            toast.error('Failed to delete report');
+            console.error('Failed to delete report:', err);
         }
     }
+};
+
+const handleDeleteReport = async (report) => {
+    openDeleteModal(report);
 };
 
 onMounted(() => {
@@ -91,7 +107,7 @@ onMounted(() => {
 
 <template>
     <AuthenticatedLayout>
-        <div class="min-h-screen bg-gray-50">
+        <div class="py-4 max-w-7xl mx-auto sm:px-4 bg-white min-h-screen relative">
             <LoaderSpinner :is-loading="isLoading" subMessage="Please wait while we fetch your data" />
             
             <div class="py-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -213,7 +229,7 @@ onMounted(() => {
                                                 <EyeIcon class="h-4 w-4" />
                                             </button>
                                             <button
-                                                @click="handleDeleteReport(report.id)"
+                                                @click="handleDeleteReport(report)"
                                                 title="Delete"
                                                 class="text-red-600 hover:text-red-900 p-1 rounded transition-colors"
                                             >
@@ -265,113 +281,143 @@ onMounted(() => {
             </div>
         </div>
 
-        <!-- Modal -->
-        <transition name="modal">
-            <div v-if="showModal" class="fixed inset-0 z-50 overflow-y-auto" @click="closeModal">
-                <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
-                    <!-- Background overlay -->
-                    <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75"></div>
+        <!-- View Report Details Modal -->
+        <Modal :show="showModal" @close="closeModal" max-width="2xl">
+            <div class="relative bg-white p-6 rounded-lg">
+                <!-- Close button -->
+                <button
+                    @click="closeModal"
+                    class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                    <XIcon class="w-5 h-5" />
+                </button>
 
-                    <!-- Modal panel -->
-                    <div 
-                        class="relative inline-block w-full max-w-2xl p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-lg"
-                        @click.stop
-                    >
-                        <!-- Close button -->
+                <!-- Modal header -->
+                <div class="mb-6">
+                    <h3 class="text-xl font-semibold text-gray-900">
+                        Report Details
+                    </h3>
+                    <div class="mt-1 h-px bg-gray-200"></div>
+                </div>
+
+                <!-- Modal content -->
+                <div v-if="selectedReport" class="space-y-4">
+                    <!-- Report ID -->
+                    <div class="bg-gray-50 rounded-md p-4">
+                        <label class="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
+                            Report ID
+                        </label>
+                        <p class="text-sm text-gray-900">
+                            #{{ selectedReport.id }}
+                        </p>
+                    </div>
+
+                    <!-- Student Name -->
+                    <div class="bg-gray-50 rounded-md p-4">
+                        <label class="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
+                            Student Name
+                        </label>
+                        <p class="text-sm text-gray-900">
+                            {{ selectedReport.fullname }}
+                        </p>
+                    </div>
+
+                    <!-- Date Submitted -->
+                    <div class="bg-gray-50 rounded-md p-4">
+                        <label class="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
+                            Date Submitted
+                        </label>
+                        <p class="text-sm text-gray-900">
+                            {{ dayjs(selectedReport.created_at).format('MMMM D, YYYY h:mm A') }}
+                        </p>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="bg-gray-50 rounded-md p-4">
+                        <label class="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
+                            Description
+                        </label>
+                        <p class="text-sm text-gray-900 whitespace-pre-wrap leading-relaxed">
+                            {{ selectedReport.description }}
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Modal footer -->
+                <div class="mt-6 pt-4 border-t border-gray-200">
+                    <div class="flex justify-end">
                         <button
                             @click="closeModal"
-                            class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+                            class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
                         >
-                            <XIcon class="w-5 h-5" />
+                            Close
                         </button>
-
-                        <!-- Modal header -->
-                        <div class="mb-6">
-                            <h3 class="text-xl font-semibold text-gray-900">
-                                Report Details
-                            </h3>
-                            <div class="mt-1 h-px bg-gray-200"></div>
-                        </div>
-
-                        <!-- Modal content -->
-                        <div v-if="selectedReport" class="space-y-4">
-                            <!-- Report ID -->
-                            <div class="bg-gray-50 rounded-md p-4">
-                                <label class="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
-                                    Report ID
-                                </label>
-                                <p class="text-sm text-gray-900">
-                                    #{{ selectedReport.id }}
-                                </p>
-                            </div>
-
-                            <!-- Student Name -->
-                            <div class="bg-gray-50 rounded-md p-4">
-                                <label class="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
-                                    Student Name
-                                </label>
-                                <p class="text-sm text-gray-900">
-                                    {{ selectedReport.fullname }}
-                                </p>
-                            </div>
-
-                            <!-- Date Submitted -->
-                            <div class="bg-gray-50 rounded-md p-4">
-                                <label class="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
-                                    Date Submitted
-                                </label>
-                                <p class="text-sm text-gray-900">
-                                    {{ dayjs(selectedReport.created_at).format('MMMM D, YYYY h:mm A') }}
-                                </p>
-                            </div>
-
-                            <!-- Description -->
-                            <div class="bg-gray-50 rounded-md p-4">
-                                <label class="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
-                                    Description
-                                </label>
-                                <p class="text-sm text-gray-900 whitespace-pre-wrap leading-relaxed">
-                                    {{ selectedReport.description }}
-                                </p>
-                            </div>
-                        </div>
-
-                        <!-- Modal footer -->
-                        <div class="mt-6 pt-4 border-t border-gray-200">
-                            <div class="flex justify-end">
-                                <button
-                                    @click="closeModal"
-                                    class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-                                >
-                                    Close
-                                </button>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>
-        </transition>
+        </Modal>
+
+        <!-- Delete Confirmation Modal -->
+        <Modal :show="showDeleteModal" @close="closeDeleteModal" max-width="md">
+            <div class="relative bg-white p-6 rounded-lg">
+                <!-- Icon -->
+                <div class="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-gray-100 rounded-full">
+                    <TrashIcon class="w-6 h-6 text-gray-600" />
+                </div>
+
+                <!-- Modal header -->
+                <div class="text-center mb-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-2">
+                        Delete Report
+                    </h3>
+                    <p class="text-sm text-gray-600">
+                        Are you sure you want to delete this report? This action cannot be undone.
+                    </p>
+                </div>
+
+                <!-- Report info -->
+                <div v-if="reportToDelete" class="bg-gray-50 rounded-md p-4 mb-6">
+                    <div class="flex items-start gap-3">
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-medium text-gray-900 truncate">
+                                {{ reportToDelete.fullname }}
+                            </p>
+                            <p class="text-xs text-gray-600 mt-1">
+                                Report ID: #{{ reportToDelete.id }}
+                            </p>
+                            <p class="text-xs text-gray-500 mt-1 line-clamp-2">
+                                {{ reportToDelete.description }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal footer -->
+                <div class="flex gap-3">
+                    <button
+                        @click="closeDeleteModal"
+                        class="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 transition-colors"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        @click="confirmDelete"
+                        class="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-gray-900 rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 transition-colors"
+                    >
+                        Delete Report
+                    </button>
+                </div>
+            </div>
+        </Modal>
     </AuthenticatedLayout>
 </template>
 
 <style scoped>
-.modal-enter-active,
-.modal-leave-active {
-    transition: opacity 0.3s ease;
-}
-
-.modal-enter-from,
-.modal-leave-to {
-    opacity: 0;
-}
-
-.modal-enter-active .relative,
-.modal-leave-active .relative {
-    transition: transform 0.3s ease;
-}
-
-.modal-enter-from .relative,
-.modal-leave-to .relative {
-    transform: scale(0.95);
+.line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 </style>
