@@ -52,16 +52,12 @@ export const useReportsStore = defineStore('reports', () => {
                 input: rfid_uid,
                 description: description 
             });
-            if (response.data.success) {
-                success(response.data.message || 'Report submitted successfully!');
-                return response.data;
-            } else {
-                throw new Error(response.data.message || 'Failed to submit report.');
-            }
+            success(response.data.message || 'Report submitted successfully!');
+            console.log(response.data.message);
+            isLoading.value = false;
         } catch (err) {
             console.error('Error submitting report:', err);
             error(err.response?.data?.message || 'Error submitting report');
-            throw err;
         } finally {
             isLoading.value = false;
         }

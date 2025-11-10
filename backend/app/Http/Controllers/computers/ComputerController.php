@@ -40,6 +40,11 @@ class ComputerController extends Controller
             });
         }
 
+        // Filter for only assigned computers (with laboratory_id)
+        if($request->has('assigned_only') && $request->assigned_only === 'true'){
+            $computers->whereNotNull('laboratory_id');
+        }
+
         // Laboratory filter
         if($request->has('laboratory_id') && $request->laboratory_id !== 'all'){
             $computers->where('laboratory_id', $request->laboratory_id);
@@ -50,12 +55,33 @@ class ComputerController extends Controller
             $computers->where('status', $request->status);
         }
 
-        $computers = $computers->get();
+        // Check if pagination is requested
+        if($request->has('paginate') && $request->paginate === 'true'){
+            // Pagination
+            $perPage = $request->get('per_page', 10);
+            $computers = $computers->paginate($perPage);
 
-        return response()->json([
-            'computers' => $computers,
-            'message' => 'Computers retrieved successfully'
-        ]);
+            return response()->json([
+                'computers' => $computers->items(),
+                'pagination' => [
+                    'current_page' => $computers->currentPage(),
+                    'last_page' => $computers->lastPage(),
+                    'per_page' => $computers->perPage(),
+                    'total' => $computers->total(),
+                    'from' => $computers->firstItem(),
+                    'to' => $computers->lastItem(),
+                ],
+                'message' => 'Computers retrieved successfully'
+            ]);
+        } else {
+            // Return all results without pagination
+            $computers = $computers->get();
+
+            return response()->json([
+                'computers' => $computers,
+                'message' => 'Computers retrieved successfully'
+            ]);
+        }
     }
 
     public function showAllComputerWithNullLabId(Request $request){

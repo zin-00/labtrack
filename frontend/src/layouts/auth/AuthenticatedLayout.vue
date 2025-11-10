@@ -82,6 +82,7 @@ const SideItems = ref([
   { id: 'laboratories',         label: 'Laboratories',      icon: InboxStackIcon,           children: [
     { id: 'computers',          label: 'Computers',         icon: LaptopMinimalIcon,            to: '/computers' },
     { id: 'config',             label: 'Configuration',            icon: CpuChipIcon,                  to: '/laboratory' },
+    { id: 'assigned_computers',  label: 'Assigned Computers', icon: MailWarningIcon,              to: '/assigned-computers'},
   ]},
   { id: 'system_activity',      label: 'System Activity',   icon: FolderMinusIcon,           children: [
       { id: 'user_session',     label: 'Student Activity',  icon: FolderMinusIcon,              to: '/computer_logs'},

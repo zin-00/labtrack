@@ -144,16 +144,29 @@ const openAddComputerModal = () => {
 
 const saveComputer = async () => {
   try {
+    // Ensure boolean values are properly sent
+    const computerData = {
+      computer_number: newComputer.computer_number,
+      ip_address: newComputer.ip_address,
+      mac_address: newComputer.mac_address,
+      laboratory_id: newComputer.laboratory_id,
+      status: newComputer.status,
+      is_online: Boolean(newComputer.is_online),
+      is_lock: Boolean(newComputer.is_lock)
+    };
+    
+    console.log('Saving computer with data:', computerData);
+    
     if (selectedComputer.value) {
-      await updateComputer(selectedComputer.value.id, newComputer);
+      await updateComputer(selectedComputer.value.id, computerData);
     } else {
-      await storeComputer(newComputer);
+      await storeComputer(computerData);
     }
     applyFilters(); // Refresh with current filters
     saveModal.value = false;
   } catch (error) {
     toast.error('Failed to save computer.');
-    console.error(error);
+    console.error('Save error:', error);
   }
 };
 
@@ -165,9 +178,10 @@ const editComputer = (computer) => {
     mac_address: computer.mac_address ?? '',
     laboratory_id: computer.laboratory_id ?? func.labs?.[0]?.id ?? 1,
     status: computer.status ?? 'active',
-    is_online: computer.is_online ?? false,
-    is_lock: computer.is_lock ?? false
+    is_online: Boolean(computer.is_online),
+    is_lock: Boolean(computer.is_lock)
   });
+  console.log('Editing computer:', newComputer);
   saveModal.value = true;
   isDropdownOpen.value = null;
 };
@@ -425,19 +439,19 @@ watch(modalState, async (newVal) => {
           <!-- Computer Card - Click to assign students -->
           <button
             @click="openAssignmentModal(computer)"
-            class="w-full p-4 bg-white border-2 border-gray-200 rounded-lg hover:border-gray-400 hover:shadow-lg transition-all duration-200 text-left"
+            class="w-full p-3 bg-white border-2 border-gray-200 rounded-lg hover:border-gray-400 hover:shadow-lg transition-all duration-200 text-left"
           >
-            <div class="flex items-center justify-between mb-3">
-              <span class="text-2xl font-bold text-gray-900 group-hover:text-gray-700 transition-colors">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-lg font-bold text-gray-900 group-hover:text-gray-700 transition-colors">
                 PC {{ computer.computer_number }}
               </span>
-              <div class="flex items-center gap-2">
+              <div class="flex items-center gap-1.5">
                 <div 
-                  class="w-2 h-2 rounded-full"
+                  class="w-1.5 h-1.5 rounded-full"
                   :class="computer.is_online ? 'bg-green-500 animate-pulse' : 'bg-gray-300'"
                 ></div>
                 <span
-                  class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border"
+                  class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium border"
                   :class="computer.is_lock 
                     ? 'bg-red-50 text-red-700 border-red-200' 
                     : 'bg-green-50 text-green-700 border-green-200'"
@@ -447,26 +461,24 @@ watch(modalState, async (newVal) => {
               </div>
             </div>
             
-            <div class="space-y-2">
-              <p class="text-sm text-gray-600">
+            <div class="space-y-1.5">
+              <p class="text-xs text-gray-600">
                 <span class="font-medium text-gray-900">Lab:</span> {{ func.labs?.find(l => l.id === computer.laboratory_id)?.name || 'N/A' }}
               </p>
-              <p class="text-sm text-gray-600 font-mono">
+              <p class="text-xs text-gray-600 font-mono">
                 <span class="font-medium text-gray-900">IP:</span> {{ computer.ip_address || 'N/A' }}
-              </p>
-              <p class="text-sm text-gray-600 font-mono">
               </p>
               
               <!-- Assigned students -->
-              <div v-if="computer.assigned_students_count" class="pt-1">
-                <span class="inline-flex items-center px-2 py-1 bg-blue-50 border border-blue-100 rounded-md text-blue-700 text-xs font-medium">
+              <div v-if="computer.assigned_students_count" class="pt-0.5">
+                <span class="inline-flex items-center px-1.5 py-0.5 bg-blue-50 border border-blue-100 rounded text-blue-700 text-xs font-medium">
                   👥 {{ computer.assigned_students_count }} student{{ computer.assigned_students_count > 1 ? 's' : '' }}
                 </span>
               </div>
               
-              <div class="mt-2">
+              <div class="mt-1.5">
                 <span
-                  class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+                  class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium"
                   :class="{
                     'bg-green-100 text-green-800': computer.status === 'active',
                     'bg-red-100 text-red-800': computer.status === 'inactive',
@@ -605,120 +617,143 @@ watch(modalState, async (newVal) => {
         </div>
       </Modal>
 
-    <!-- Add / Edit Computer Modal -->
-<Modal :show="saveModal" @close="saveModal = false">
-  <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-auto relative border border-gray-100">
-    <!-- Header -->
-    <div class="px-6 py-4 border-b border-gray-100">
-      <h2 class="text-xl font-semibold text-gray-900">
-        {{ selectedComputer ? 'Edit Computer' : 'Add Computer' }}
-      </h2>
-    </div>
+    <!-- Add / Edit Computer Modal (Custom Wide Modal) -->
+    <div
+      v-if="saveModal"
+      class="fixed inset-0 z-50 overflow-y-auto"
+      @click.self="saveModal = false"
+    >
+      <div class="flex min-h-screen items-center justify-center p-4">
+        <!-- Backdrop -->
+        <div class="fixed inset-0 bg-black bg-opacity-50 transition-opacity"></div>
+        
+        <!-- Modal Content -->
+        <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-4xl border border-gray-200">
+          <!-- Header -->
+          <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+            <h2 class="text-xl font-semibold text-gray-900">
+              {{ selectedComputer ? 'Edit Computer' : 'Add Computer' }}
+            </h2>
+            <button
+              @click="saveModal = false"
+              class="text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
 
-    <!-- Form Content -->
-    <div class="px-6 py-5 space-y-4">
-      <!-- Computer Number -->
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">Computer Number</label>
-        <input
-          v-model="newComputer.computer_number"
-          type="text"
-          placeholder="PC-001"
-          class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:border-gray-500 focus:ring-1 focus:ring-gray-500 bg-white transition"
-        >
-      </div>
+          <!-- Form Content - 2 Column Layout -->
+          <div class="px-6 py-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+              <!-- Computer Number -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Computer Number *</label>
+                <input
+                  v-model="newComputer.computer_number"
+                  type="text"
+                  placeholder="PC-001"
+                  class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:border-gray-500 focus:ring-2 focus:ring-gray-200 bg-white transition"
+                >
+              </div>
 
-      <!-- IP Address -->
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">IP Address</label>
-        <input
-          v-model="newComputer.ip_address"
-          type="text"
-          placeholder="192.168.1.100"
-          class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:border-gray-500 focus:ring-1 focus:ring-gray-500 bg-white transition font-mono"
-        >
-      </div>
+              <!-- Laboratory -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Laboratory *</label>
+                <select
+                  v-model="newComputer.laboratory_id"
+                  class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:border-gray-500 focus:ring-2 focus:ring-gray-200 bg-white transition"
+                >
+                  <option value="" disabled>Select laboratory</option>
+                  <option v-if="(func.labs?.length ?? 0) === 0" disabled>No labs available</option>
+                  <option v-for="lab in func.labs || []" :key="lab.id" :value="lab.id">
+                    {{ lab.name }}
+                  </option>
+                </select>
+              </div>
 
-      <!-- MAC Address -->
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">MAC Address</label>
-        <input
-          v-model="newComputer.mac_address"
-          type="text"
-          placeholder="00:1B:44:11:3A:B7"
-          class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:border-gray-500 focus:ring-1 focus:ring-gray-500 bg-white transition font-mono"
-        >
-      </div>
+              <!-- IP Address -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">IP Address *</label>
+                <input
+                  v-model="newComputer.ip_address"
+                  type="text"
+                  placeholder="192.168.1.100"
+                  class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:border-gray-500 focus:ring-2 focus:ring-gray-200 bg-white transition font-mono"
+                >
+              </div>
 
-      <!-- Laboratory -->
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">Laboratory</label>
-        <select
-          v-model="newComputer.laboratory_id"
-          class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:border-gray-500 focus:ring-1 focus:ring-gray-500 bg-white transition"
-        >
-          <option value="" disabled>Select laboratory</option>
-          <option v-if="(func.labs?.length ?? 0) === 0" disabled>No labs available</option>
-          <option v-for="lab in func.labs || []" :key="lab.id" :value="lab.id">
-            {{ lab.name }}
-          </option>
-        </select>
-      </div>
+              <!-- MAC Address -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">MAC Address *</label>
+                <input
+                  v-model="newComputer.mac_address"
+                  type="text"
+                  placeholder="00:1B:44:11:3A:B7"
+                  class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:border-gray-500 focus:ring-2 focus:ring-gray-200 bg-white transition font-mono"
+                >
+              </div>
 
-      <!-- Status -->
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
-        <select
-          v-model="newComputer.status"
-          class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:border-gray-500 focus:ring-1 focus:ring-gray-500 bg-white transition"
-        >
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
-          <option value="maintenance">Maintenance</option>
-        </select>
-      </div>
+              <!-- Status -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Status *</label>
+                <select
+                  v-model="newComputer.status"
+                  class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:border-gray-500 focus:ring-2 focus:ring-gray-200 bg-white transition"
+                >
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                  <option value="maintenance">Maintenance</option>
+                </select>
+              </div>
 
-      <!-- Status Checkboxes -->
-      <div class="grid grid-cols-2 gap-4 pt-2">
-        <div class="flex items-center">
-          <input
-            id="is_online"
-            v-model="newComputer.is_online"
-            type="checkbox"
-            class="h-4 w-4 text-gray-600 focus:ring-gray-500 border-gray-300 rounded"
-          >
-          <label for="is_online" class="ml-2 text-sm text-gray-700">Online</label>
+              <!-- Status Toggles -->
+              <div class="flex flex-col justify-center">
+                <label class="block text-sm font-medium text-gray-700 mb-3">Computer State</label>
+                <div class="flex gap-6">
+                  <div class="flex items-center">
+                    <input
+                      id="is_online"
+                      v-model="newComputer.is_online"
+                      type="checkbox"
+                      class="h-4 w-4 text-gray-600 focus:ring-gray-500 border-gray-300 rounded cursor-pointer"
+                    >
+                    <label for="is_online" class="ml-2 text-sm text-gray-700 cursor-pointer">Online</label>
+                  </div>
+
+                  <div class="flex items-center">
+                    <input
+                      id="is_lock"
+                      v-model="newComputer.is_lock"
+                      type="checkbox"
+                      class="h-4 w-4 text-gray-600 focus:ring-gray-500 border-gray-300 rounded cursor-pointer"
+                    >
+                    <label for="is_lock" class="ml-2 text-sm text-gray-700 cursor-pointer">Locked</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Footer Actions -->
+          <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 rounded-b-xl flex justify-end gap-3">
+            <button
+              @click="saveModal = false"
+              class="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              @click="saveComputer"
+              class="px-5 py-2.5 text-sm font-medium text-white bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"
+            >
+              {{ selectedComputer ? 'Update Computer' : 'Add Computer' }}
+            </button>
+          </div>
         </div>
-
-        <div class="flex items-center">
-          <input
-            id="is_lock"
-            v-model="newComputer.is_lock"
-            type="checkbox"
-            class="h-4 w-4 text-gray-600 focus:ring-gray-500 border-gray-300 rounded"
-          >
-          <label for="is_lock" class="ml-2 text-sm text-gray-700">Locked</label>
-        </div>
       </div>
     </div>
-
-    <!-- Footer Actions -->
-    <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 rounded-b-xl flex justify-end gap-3">
-      <button
-        @click="saveModal = false"
-        class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-      >
-        Cancel
-      </button>
-      <button
-        @click="saveComputer"
-        class="px-4 py-2 text-sm font-medium text-white bg-gray-700 rounded-lg hover:bg-gray-600 transition"
-      >
-        Save
-      </button>
-    </div>
-  </div>
-</Modal>
 
         <!--Student Assignment Modal -->
       <StudentAssignmentModal

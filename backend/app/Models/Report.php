@@ -10,6 +10,7 @@ class Report extends Model
         'student_id',
         'fullname',
         'description',
+        'status'
     ];
 
     public function student()

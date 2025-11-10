@@ -12,6 +12,9 @@ import Button from '../../components/button/Button.vue';
 import { useComputerStore } from '../../composable/computers';
 import LoaderSpinner from '../../components/spinner/LoaderSpinner.vue';
 import Table from '../../components/table/Table.vue';
+import axios from 'axios';
+import { useApiUrl } from '../../api/api';
+
 
 
 const router = useRouter();
@@ -31,9 +34,6 @@ const {
     addModal,
     searchQuery,
     populateModal,
-    unassignedComputers,
-    selectedComputers,
-    currentLabId,
 } = storeToRefs(labStore);
 const {
         computers
@@ -53,10 +53,16 @@ const {
         unassignLabFromComputer
     } = cstore;
 
+// Local refs for computer assignment
 const assignMode = ref('assign'); // 'assign' or 'unassign'
 const selectedLabForUnassign = ref('all');
 const assignedComputers = ref([]);
 const selectedComputersForUnassign = ref([]);
+const unassignedComputers = ref([]);
+const selectedComputers = ref([]);
+const currentLabId = ref(null);
+const allComputers = ref([]);
+const modalSearchQuery = ref(''); // Local search query for the modal
 
 const props = defineProps({
     LabName: String,
@@ -151,20 +157,21 @@ const openPopulateModal = (labId) => {
     assignMode.value = 'assign';
     selectedComputers.value = [];
     selectedComputersForUnassign.value = [];
+    modalSearchQuery.value = ''; // Initialize modal search query
     loadUnassignedComputers();
 };
 
 const switchToUnassignMode = () => {
     assignMode.value = 'unassign';
     selectedComputersForUnassign.value = [];
-    searchQuery.value = '';
+    modalSearchQuery.value = '';
     loadAssignedComputers();
 };
 
 const switchToAssignMode = () => {
     assignMode.value = 'assign';
     selectedComputers.value = [];
-    searchQuery.value = '';
+    modalSearchQuery.value = '';
     loadUnassignedComputers();
 };
 
@@ -192,16 +199,16 @@ const loadUnassignedComputers = () => {
 const loadAssignedComputers = async () => {
     await fetchComputers({
         laboratory_id: currentLabId.value,
-        search: searchQuery.value
+        search: modalSearchQuery.value
     });
     assignedComputers.value = computers.value;
 };
 
 const filteredAssignedComputers = computed(() => {
-    if (!searchQuery.value) {
+    if (!modalSearchQuery.value) {
         return assignedComputers.value;
     }
-    const query = searchQuery.value.toLowerCase();
+    const query = modalSearchQuery.value.toLowerCase();
     return assignedComputers.value.filter(computer => 
         computer.computer_number?.toLowerCase().includes(query) ||
         computer.ip_address?.toLowerCase().includes(query) ||
@@ -221,6 +228,7 @@ const assignComputers = async () => {
         if (success) {
             toast.success(`${selectedComputers.value.length} computer(s) assigned successfully`);
             selectedComputers.value = [];
+            loadAllComputers(); // Refresh all computers for status display
         }
 
         populateModal.value = false;
@@ -243,6 +251,7 @@ const unassignComputers = async () => {
         if (success) {
             toast.success(`${selectedComputersForUnassign.value.length} computer(s) unassigned successfully`);
             selectedComputersForUnassign.value = [];
+            loadAllComputers(); // Refresh all computers for status display
             loadAssignedComputers();
         }
     } catch (error) {
@@ -267,21 +276,60 @@ const toggleAllForUnassign = (event) => {
     }
 };
 
+// Helper function to get online computers count for a lab
+const getOnlineComputersCount = (labId) => {
+    return allComputers.value.filter(c => c.laboratory_id === labId && c.is_online).length;
+};
+
+// Helper function to get total computers count for a lab
+const getTotalComputersCount = (labId) => {
+    return allComputers.value.filter(c => c.laboratory_id === labId).length;
+};
+
+// Helper function to check if any computer is online in a lab
+const hasOnlineComputers = (labId) => {
+    return allComputers.value.some(c => c.laboratory_id === labId && c.is_online);
+};
+
+// Load all computers for status tracking
+const loadAllComputers = async () => {
+    try {
+        const { api, getAuthHeader } = useApiUrl();
+        const response = await axios.get(`${api}/computers?include=laboratory`, getAuthHeader());
+        allComputers.value = response.data.computers || [];
+        console.log('All computers loaded:', allComputers.value.length);
+        console.log('Computers with is_online=true:', allComputers.value.filter(c => c.is_online).length);
+        
+        // Log computers by lab
+        laboratories.value.forEach(lab => {
+            const labComputers = allComputers.value.filter(c => c.laboratory_id === lab.id);
+            const onlineCount = labComputers.filter(c => c.is_online).length;
+            console.log(`Lab "${lab.name}" (ID: ${lab.id}): ${labComputers.length} total, ${onlineCount} online`);
+        });
+    } catch (error) {
+        console.error('Error loading all computers:', error);
+        allComputers.value = [];
+        toast.error('Failed to load computer status');
+    }
+};
+
 onMounted(() => {
     fetchLaboratories({
         search: searchQuery.value,
         status: statusFilter.value,
     });
+    loadAllComputers(); // Load all computers for status display
     loadUnassignedComputers();
 });
 </script>
 <template>
     <AuthenticatedLayout>
-         <div class="py-4 max-w-7xl mx-auto sm:px-4 bg-white min-h-screen relative">
+        <div class="py-4 max-w-7xl mx-auto sm:px-4 bg-white min-h-screen relative">
             <LoaderSpinner :isLoading="isLoading" subMessage="Loading laboratories..." />
             
-            <!-- Header Section -->
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-6">
+            <div v-show="!isLoading">
+                <!-- Header Section -->
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-6">
                 <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                     <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                         <!-- Page Title -->
@@ -349,9 +397,6 @@ onMounted(() => {
 
             <!-- Content Section -->
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-
-            <!-- Content Section -->
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <!-- Laboratory Cards Grid -->
                 <div v-if="laboratories.length > 0" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                     <div
@@ -411,11 +456,33 @@ onMounted(() => {
                             <p v-if="lab.description" class="text-xs text-gray-600 line-clamp-2 mb-3">
                                 {{ lab.description }}
                             </p>
+                            
+                            <!-- Computer Stats -->
+                            <div class="flex items-center gap-2 mt-3">
+                                <!-- Total Computers -->
+                                <div class="flex items-center gap-1.5 px-2 py-1 bg-gray-100 border border-gray-200 rounded-md">
+                                    <svg class="w-3.5 h-3.5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                    </svg>
+                                    <span class="text-xs font-medium text-gray-700">
+                                        {{ getTotalComputersCount(lab.id) }} PCs
+                                    </span>
+                                </div>
+                                
+                                <!-- Online/Occupied Status -->
+                                <div v-if="hasOnlineComputers(lab.id)" class="flex items-center gap-1.5 px-2 py-1 bg-green-50 border border-green-200 rounded-md">
+                                    <div class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
+                                    <span class="text-xs font-medium text-green-700">
+                                        {{ getOnlineComputersCount(lab.id) }} online
+                                    </span>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Card Footer -->
                         <div class="px-4 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
-                            <div class="flex items-center">
+                            <div class="flex items-center gap-3">
+                                <!-- Status Indicator -->
                                 <div class="flex items-center">
                                     <div :class="{
                                         'w-2 h-2 rounded-full mr-1.5': true,
@@ -425,6 +492,16 @@ onMounted(() => {
                                     }"></div>
                                     <span class="text-xs font-medium text-gray-700 capitalize">
                                         {{ lab.status }}
+                                    </span>
+                                </div>
+                                
+                                <!-- Occupied Badge -->
+                                <div v-if="hasOnlineComputers(lab.id)" class="flex items-center gap-1.5 px-2 py-1 bg-orange-50 border border-orange-200 rounded-md">
+                                    <svg class="w-3 h-3 text-orange-600" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                                    </svg>
+                                    <span class="text-xs font-semibold text-orange-700 uppercase tracking-wide">
+                                        Occupied
                                     </span>
                                 </div>
                             </div>
@@ -569,7 +646,7 @@ onMounted(() => {
                                         </svg>
                                     </div>
                                     <input
-                                        v-model="searchQuery"
+                                        v-model="modalSearchQuery"
                                         type="text"
                                         placeholder="Search computers..."
                                         class="block w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-200 focus:border-gray-400 text-sm transition-colors bg-white"
@@ -642,7 +719,7 @@ onMounted(() => {
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
                                 </svg>
                                 <h3 class="text-xs font-medium text-gray-900 mb-1">No assigned computers found</h3>
-                                <p class="text-xs text-gray-500">This laboratory has no computers assigned{{ searchQuery ? ' matching your search' : '' }}.</p>
+                                <p class="text-xs text-gray-500">This laboratory has no computers assigned{{ modalSearchQuery ? ' matching your search' : '' }}.</p>
                             </div>
                         </div>
                     </div>
@@ -763,7 +840,7 @@ onMounted(() => {
                     </div>
                 </div>
             </Modal>
+            </div>
         </div>
-         </div>
     </AuthenticatedLayout>
 </template>

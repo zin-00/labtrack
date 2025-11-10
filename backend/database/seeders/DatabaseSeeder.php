@@ -16,11 +16,12 @@ class DatabaseSeeder extends Seeder
     {
 
         User::updateOrCreate(
-            ['email' => 'admin@example.com'],
+            ['email' => 'admin@admin.com'],
             [
                 'name' => 'Administrator',
                 'password' => Hash::make('admin'),
-                'role' => 'admin',
+                'roles' => 'admin',
+                'status' => 'active',
             ]
         );
         // User::factory(10)->create();
@@ -38,10 +39,10 @@ class DatabaseSeeder extends Seeder
         // );
         // $this->call(StudentSeeder::class);
 
-        $this->call(ComputerSeeder::class);
+        // $this->call(ComputerSeeder::class);
 
-        $this->call(YearLevelSeeder::class);
-        $this->call(SectionSeeder::class);
+        // $this->call(YearLevelSeeder::class);
+        // $this->call(SectionSeeder::class);
 
     }
 }

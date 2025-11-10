@@ -242,13 +242,13 @@ const performBulkAssignment = async () => {
         const studentIds = Array.from(selectedStudents.value);
         const computerIds = Array.from(selectedComputers.value);
         
-        console.log('=== BULK ASSIGNMENT DEBUG ===');
-        console.log('Student IDs:', studentIds);
-        console.log('Computer IDs:', computerIds);
-        console.log('Total assignments to create:', studentIds.length * computerIds.length);
-        console.log('Assignment Mode:', assignmentMode.value);
-        console.log('Laboratory ID:', bulkLabFilter.value?.id || null);
-        console.log('============================');
+        // console.log('=== BULK ASSIGNMENT DEBUG ===');
+        // console.log('Student IDs:', studentIds);
+        // console.log('Computer IDs:', computerIds);
+        // console.log('Total assignments to create:', studentIds.length * computerIds.length);
+        // console.log('Assignment Mode:', assignmentMode.value);
+        // console.log('Laboratory ID:', bulkLabFilter.value?.id || null);
+        // console.log('============================');
         
         const response = await axios.post(`${api}/computer/bulk-assign-auto`, {
             laboratory_id: bulkLabFilter.value?.id || null,

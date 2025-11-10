@@ -65,6 +65,8 @@ class ReportController extends Controller
             'student_id' => $student->id,
             'fullname' => $student->fullname,
             'description' => $request->description,
+            'status' => 'pending',
+
         ]);
 
         return response()->json([
@@ -72,6 +74,18 @@ class ReportController extends Controller
             'report' => $report,
         ]);
     }
+
+    public function resolve(Request $request, $id)
+    {
+        $report = Report::findOrFail($id);
+
+        $report->update('status', 'resolved');
+
+        return response()->json([
+            'message' => 'Report resolved successfully',
+        ]);
+    }
+
 
     public function destroy($id)
     {

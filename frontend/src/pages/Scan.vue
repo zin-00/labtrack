@@ -60,6 +60,19 @@ const sendRequest = async (rfid_uid) => {
   }
 }
 
+const handleReportSubmit = async (uid, description) => {
+  try {
+    await submitReport(uid, description);
+    showReportModal.value = false;
+    reportRfidUid.value = '';
+    reportDescription.value = '';
+  } catch (err) {
+    errorMessage.value = err.message;
+  }finally{
+    showReportModal.value = false;
+  }
+};
+
 watch(() => data.value.rfid_uid, (newValue) => {
   if (newValue && newValue.trimEnd().length === 10) {
     sendRequest(newValue.trim());
@@ -643,7 +656,7 @@ onMounted(() => {
               Cancel
             </button>
             <button
-              @click="submitReport(reportRfidUid, reportDescription)"
+              @click="handleReportSubmit(reportRfidUid, reportDescription)"
               :disabled="isSubmitting || !reportRfidUid || !reportDescription"
               class="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
             >

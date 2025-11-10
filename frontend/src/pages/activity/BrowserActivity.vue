@@ -281,6 +281,7 @@ getBrowserActivity();
           <template #header>
             <tr>
               <th class="px-4 py-2 text-xs font-medium text-gray-600 text-left">IP Address</th>
+              <th class="px-4 py-2 text-xs font-medium text-gray-600 text-left">User</th>
               <th class="px-4 py-2 text-xs font-medium text-gray-600 text-left">Work Station</th>
               <th class="px-4 py-2 text-xs font-medium text-gray-600 text-left">Browser</th>
               <th class="px-4 py-2 text-xs font-medium text-gray-600 text-left">Title</th>
@@ -293,6 +294,7 @@ getBrowserActivity();
           <template #default>
             <tr v-for="activity in browserActivity" :key="activity.id" class="hover:bg-gray-50 transition-colors">
               <td class="px-4 py-2.5 text-xs text-gray-900">{{ activity.ip_address }}</td>
+              <td class="px-4 py-2.5 text-xs text-gray-900">{{ activity.student_id }}</td>
               <td class="px-4 py-2.5 text-xs text-gray-900">{{ activity.computer_id }}</td>
               <td class="px-4 py-2.5 text-xs text-gray-900">
                 <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium bg-gray-100 text-gray-700">
