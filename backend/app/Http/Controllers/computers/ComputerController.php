@@ -340,7 +340,7 @@ class ComputerController extends Controller
         }
 
         // event(new ComputerUnlockRequested($computer->id, $student->id));
-        ComputerStatusUpdated::dispatch($computer->id, $student->id);
+        ComputerStatusUpdated::dispatch($computer->id);
         ComputerUnlockRequested::dispatch($computer, $request->input('rfid_uid'));
 
         return response()->json([
@@ -637,6 +637,9 @@ public function unlockComputersByLab(Request $request, $labId, $rfid_uid)
             'end_time'     => null,
         ]);
 
+        // Dispatch unlock event for each computer
+        ComputerUnlockRequested::dispatch($computer, $rfid_uid);
+
         $unlockedComputers[] = [
             'id'              => $computer->id,
             'computer_number' => $computer->computer_number,
@@ -645,9 +648,8 @@ public function unlockComputersByLab(Request $request, $labId, $rfid_uid)
         ];
     }
 
-    // Dispatch events ONCE per batch
+    // Dispatch scan event once for the student
     ScanEvent::dispatch($student);
-    ComputerUnlockRequested::dispatch($unlockedComputers);
 
     return response()->json([
         'message'   => 'Computers unlocked successfully',
