@@ -1,7 +1,7 @@
 <script setup>
 import { ref, reactive, onMounted, computed, watch } from 'vue';
 import AuthenticatedLayout from '../../layouts/auth/AuthenticatedLayout.vue';
-import { useToast } from 'vue-toastification';
+import { useToast } from '../../composable/toastification/useToast';
 import { ArrowPathIcon, PlusIcon, ArrowDownTrayIcon, XMarkIcon, EllipsisVerticalIcon } from '@heroicons/vue/24/outline';
 import { useLaboratoryStore } from '../../composable/laboratory';
 import { storeToRefs } from 'pinia';

@@ -1,13 +1,13 @@
 import { ref } from 'vue';
 import { defineStore, storeToRefs } from 'pinia';
 import { useApiUrl } from '../api/api';
-import { useToast } from 'vue-toastification';
 import axios from 'axios';
+import { useToast } from './toastification/useToast';
 
-const toast = useToast();
 const { api, getAuthHeader } = useApiUrl();
 
 export const useComputerLogStore = defineStore('computerLog', () => {
+    const toast = useToast();
 
     const latestScan = ref([]);
     const selectedStatus = ref('all');
@@ -46,6 +46,8 @@ export const useComputerLogStore = defineStore('computerLog', () => {
             
             computerLogs.value = response.data.computer_logs || [];
             console.log(computerLogs.value);
+            const message = response.data.message || 'Computer logs fetched successfully';
+            toast.success('Success', message);
         } catch (error) {
             computerLogs.value = { data: [], meta: {} };
             toast.error('Failed to fetch computer logs');
@@ -93,7 +95,7 @@ export const useComputerLogStore = defineStore('computerLog', () => {
         const response = await axios.get(`${api}/logs`, getAuthHeader());
         latestScan.value = response.data.latestScans || [];
     }catch(err) {
-        error('Failed to fetch recent scans');
+        toast.error('Error', 'Failed to fetch recent scans');
         console.error('Error fetching recent scans:', err);
     }
     }

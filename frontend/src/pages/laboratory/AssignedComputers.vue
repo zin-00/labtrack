@@ -20,7 +20,7 @@ import autoTable from 'jspdf-autotable';
 import { debounce } from 'lodash-es';
 import axios from 'axios';
 import { useApiUrl } from '../../api/api';
-import { useToast } from 'vue-toastification';
+import { useToast } from '../../composable/toastification/useToast';
 
 const toast = useToast();
 

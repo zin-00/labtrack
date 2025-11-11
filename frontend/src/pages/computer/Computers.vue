@@ -2,7 +2,7 @@
 
 import { ref, computed, reactive, onMounted, onUnmounted, watch, nextTick, toRefs } from 'vue';
 import AuthenticatedLayout from '../../layouts/auth/AuthenticatedLayout.vue';
-import { useToast } from 'vue-toastification';
+import { useToast } from '../../composable/toastification/useToast';
 import { EllipsisVerticalIcon } from '@heroicons/vue/16/solid';
 import TextInput from '../../components/input/TextInput.vue';
 import Modal from '../../components/modal/Modal.vue';
@@ -165,7 +165,6 @@ const saveComputer = async () => {
     applyFilters(); // Refresh with current filters
     saveModal.value = false;
   } catch (error) {
-    toast.error('Failed to save computer.');
     console.error('Save error:', error);
   }
 };
@@ -202,11 +201,9 @@ const confirmDelete = async () => {
   if (computerToDelete.value) {
     try {
       await deleteComputer(computerToDelete.value.id);
-      toast.success('Computer deleted successfully');
       closeDeleteModal();
       applyFilters();
     } catch (error) {
-      toast.error('Failed to delete computer');
       console.error(error);
     }
   }

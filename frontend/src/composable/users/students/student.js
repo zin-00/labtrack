@@ -3,6 +3,7 @@ import { toRefs } from 'vue';
 import axios from 'axios';
 import { useApiUrl } from '../../../api/api';
 import {useStates} from '../../states';
+import { useToast } from '../../toastification/useToast.js';
 
 const { api, getAuthHeader } = useApiUrl();
 
@@ -10,10 +11,7 @@ const { api, getAuthHeader } = useApiUrl();
 // Students functions
 export const useStudentStore = defineStore('student', () => {
   const states = useStates();
-  const {
-        success,
-        error
-        } = states;
+  const toast = useToast();
   const {
         students,
         pagination,
@@ -23,10 +21,11 @@ export const useStudentStore = defineStore('student', () => {
 
   const storeStudent = async (data) => {
     try{
-      const response = await axios.post(`${api}/students`, data, getAuthHeader());
-      success(response.data.message || 'Student added successfully!');
+      await axios.post(`${api}/students`, data, getAuthHeader());
+      toast.success('Success', 'Student added successfully!');
+      console.log('Toast should be visible now');
     }catch(err){
-      error('Failed to add student.');
+      toast.error('Error', 'Failed to add student');
       console.error('Error storing student:', err);
     }
   }
@@ -65,12 +64,11 @@ export const useStudentStore = defineStore('student', () => {
         per_page: response.data.students.per_page,
         total: response.data.students.total
       }
-      console.log('Students data:', students.value);
-      console.log('Pagination data:', pagination.value);
-      
+      // const message = response.data.message || 'Success';
+      // toast.success('Success', message, 3000);
     }catch(err){
       students.value = [];
-      error('Failed to fetch students');
+      toast.error('Error', 'Failed to fetch students');
       console.error('Error fetching students:', err);
     }finally{
       isLoading.value = false;
@@ -79,10 +77,11 @@ export const useStudentStore = defineStore('student', () => {
 
   const updateStudent = async (id, data) => {
     try{
-      await axios.put(`${api}/students/${id}`, data, getAuthHeader());
-      success('Student updated successfully!');
+      const response = await axios.put(`${api}/students/${id}`, data, getAuthHeader());
+      const message = response.data.message;
+      toast.success('Success', message);
     }catch(err){
-      error('Failed to update student.');
+      toast.error('Error', 'Failed to update student');
       console.error('Error updating student:', err);
     }
   }
@@ -90,9 +89,9 @@ export const useStudentStore = defineStore('student', () => {
   const deleteStudent = async (id) => {
     try{
       await axios.delete(`${api}/students/${id}`, getAuthHeader());
-      success('Student deleted successfully!');
+      toast.success('Success', 'Student deleted successfully!');
     }catch(err){
-      error('Failed to delete student.');
+      toast.error('Error', 'Failed to delete student');
       console.error('Error deleting student:', err);
     }
   }

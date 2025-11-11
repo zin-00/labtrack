@@ -5,7 +5,7 @@ import InputError from '../../components/input/InputError.vue';
 import Button from '../../components/button/Button.vue';
 import AuthBase from '../../layouts/AuthLayout.vue';
 import { LoaderCircle } from 'lucide-vue-next';
-import { useToast } from 'vue-toastification';
+import { useToast } from '../../composable/toastification/useToast';
 import TextInput from '../../components/input/TextInput.vue';
 import router from '../../router';
 import { useAuthStore } from '../../composable/useAuth';

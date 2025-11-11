@@ -26,10 +26,11 @@ import autoTable from 'jspdf-autotable';
 import { debounce } from 'lodash-es';
 import axios from 'axios';
 import { useApiUrl } from '../../api/api';
-import { useToast } from 'vue-toastification';
+import { useToast } from '../../composable/toastification/useToast';
 
 // Store initialization
 const states = useStates();
+const toast = useToast();
 const station = useWorkstationStore();
 const laboratory = useLaboratoryStore();
 const program = useProgramStore();
@@ -228,16 +229,13 @@ const toggleAllComputers = () => {
 
 const performBulkAssignment = async () => {
     if (selectedStudents.value.size === 0 || selectedComputers.value.size === 0) {
-        toast.error('Please select at least one student and one computer');
+        toast.error('Error', 'Please select at least one student and one computer');
         return;
     }
     
     isAssigning.value = true;
     try {
         const { api, getAuthHeader } = useApiUrl();
-        const { useToast } = await import('vue-toastification');
-        const toast = useToast();
-        const axios = (await import('axios')).default;
         
         const studentIds = Array.from(selectedStudents.value);
         const computerIds = Array.from(selectedComputers.value);
@@ -259,7 +257,7 @@ const performBulkAssignment = async () => {
         
         console.log('Backend response:', response.data);
         
-        toast.success(response.data.message || 'Students assigned successfully');
+        toast.success('Success', response.data.message || 'Students assigned successfully');
         
         // Clear selections but keep modal open
         selectedStudents.value.clear();
@@ -272,9 +270,7 @@ const performBulkAssignment = async () => {
         // Refresh the main table
         applyFilters(1);
     } catch (error) {
-        const { useToast } = await import('vue-toastification');
-        const toast = useToast();
-        toast.error(error.response?.data?.message || 'Failed to assign students');
+        toast.error('Error', error.response?.data?.message || 'Failed to assign students');
         console.error('Assignment error:', error);
     } finally {
         isAssigning.value = false;
@@ -474,14 +470,10 @@ const generatePDF = async () => {
         doc.save(`Assigned_Workstation_${timestamp}.pdf`);
         
         // Show success message
-        const { useToast } = await import('vue-toastification');
-        const toast = useToast();
-        toast.success(`PDF generated with ${pdfData.length} record(s)`);
+        toast.success('Success', `PDF generated with ${pdfData.length} record(s)`);
     } catch (error) {
         console.error('Error generating PDF:', error);
-        const { useToast } = await import('vue-toastification');
-        const toast = useToast();
-        toast.error('Failed to generate PDF');
+        toast.error('Error', 'Failed to generate PDF');
     } finally {
         isLoading.value = false;
     }

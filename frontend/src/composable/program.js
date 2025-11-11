@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { ref, toRefs } from 'vue';
 import axios from 'axios';
 import { useApiUrl } from '../api/api';
-import { useToast } from 'vue-toastification';
+import { useToast } from './toastification/useToast';
 import { useStates } from './states';
 
 const toast = useToast();
@@ -46,14 +46,11 @@ const { api, getAuthHeader } = useApiUrl();
         total: paginated.total,
       };
 
-      // success(response.data.message);
-      console.log("All programs:", programs.value);
-      console.log("Paginated:", paginatedPrograms.value);
-      console.log("Pagination Info:", paginationPrograms.value);
+      toast.success('Success', response.data.message);
     } catch (error) {
       programs.value = [];
       paginatedPrograms.value = [];
-      toast.error("Failed to fetch programs");
+      toast.error('Error', "Failed to fetch programs");
       console.error("Error fetching programs:", error);
     }
   };

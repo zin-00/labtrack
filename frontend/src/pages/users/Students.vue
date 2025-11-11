@@ -16,7 +16,7 @@ import {
     UserPlusIcon,
     XMarkIcon
 } from '@heroicons/vue/24/outline';
-import { useToast } from 'vue-toastification';
+// import { useToast } from 'vue-toastification';
 import { useExcelStore } from '../../composable/excel';
 import { useStudentStore } from '../../composable/users/students/student';
 import { useProgramStore } from '../../composable/program';
@@ -24,6 +24,7 @@ import { useStates } from '../../composable/states';
 import { useSectionStore } from '../../composable/section';
 import { useYearLevelStore } from '../../composable/yearlevel';
 import { debounce } from 'lodash-es';
+import { useToast } from '../../composable/toastification/useToast';
 
 // Store initialization
 const toast = useToast();
@@ -103,14 +104,12 @@ watch([searchQuery, selectedProgram, selectedYearLevel, selectedSection, selecte
 // Methods
 const handleView = (user) => {
     console.log('View user:', user);
-    toast.success('User viewed successfully!');
 };
 
 const getStudents = async (page = 1) => {
     try {
         await applyFilters(page);
     } catch (error) {
-        toast.error('Failed to fetch students.');
         console.error(error);
     }
 };
@@ -127,7 +126,6 @@ const saveStudent = async () => {
         }
         applyFilters(pagination.value.current_page); // Refresh with current filters and page
     } catch (error) {
-        toast.error('Failed to add user.');
         console.error(error);
     }
 };
@@ -150,7 +148,7 @@ const deleteStudent_func = async () => {
         applyFilters(pagination.value.current_page); // Refresh with current filters and page
     } catch (error) {
         console.error('Error deleting student:', error);
-        toast.error('Failed to delete student.');
+        toast.error('Error', 'Failed to delete student');
     }
 };
 
@@ -535,205 +533,205 @@ onMounted(async () => {
 
 
 
-<!-- Store and Edit User Modal -->
-<Transition
-    enter-active-class="ease-out duration-300"
-    enter-from-class="opacity-0"
-    enter-to-class="opacity-100"
-    leave-active-class="ease-in duration-200"
-    leave-from-class="opacity-100"
-    leave-to-class="opacity-0"
->
-    <div v-if="modalState" class="fixed inset-0 bg-white/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <!-- Store and Edit User Modal -->
         <Transition
             enter-active-class="ease-out duration-300"
-            enter-from-class="opacity-0 scale-95"
-            enter-to-class="opacity-100 scale-100"
+            enter-from-class="opacity-0"
+            enter-to-class="opacity-100"
             leave-active-class="ease-in duration-200"
-            leave-from-class="opacity-100 scale-100"
-            leave-to-class="opacity-0 scale-95"
+            leave-from-class="opacity-100"
+            leave-to-class="opacity-0"
         >
-            <div v-if="modalState" class="bg-white/95 backdrop-blur-md rounded-xl shadow-2xl w-full max-w-6xl relative border border-gray-200/50">
-                <!-- Header -->
-                <div class="px-8 py-5 border-b border-gray-200/50 bg-white/60 backdrop-blur-sm rounded-t-xl">
-                    <div class="flex items-center justify-between">
-                        <h2 class="text-2xl font-semibold text-gray-900">
-                            {{ selectedUser ? 'Edit Student' : 'Add New Student' }}
-                        </h2>
-                        <button
-                            @click="ModalState(false)"
-                            class="p-2 hover:bg-gray-200 rounded-lg transition-colors text-gray-500 hover:text-gray-700"
-                        >
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Form Content -->
-                <div class="p-8">
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                        <!-- Student ID -->
-                        <div class="space-y-2">
-                            <label class="block text-sm font-medium text-gray-700">Student ID</label>
-                            <TextInput
-                                v-model="studentData.student_id"
-                                type="text"
-                                class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-all bg-white text-gray-900"
-                                placeholder="Enter student ID"
-                            />
-                        </div>
-
-                        <!-- RFID UID -->
-                        <div class="space-y-2">
-                            <label class="block text-sm font-medium text-gray-700">RFID UID</label>
-                            <TextInput
-                                v-model="studentData.rfid_uid"
-                                type="text"
-                                class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-all bg-white text-gray-900"
-                                placeholder="Scan or enter RFID"
-                            />
-                        </div>
-
-                        <!-- First Name -->
-                        <div class="space-y-2">
-                            <label class="block text-sm font-medium text-gray-700">First Name</label>
-                            <TextInput
-                                v-model="studentData.first_name"
-                                type="text"
-                                class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-all bg-white text-gray-900"
-                                placeholder="Enter first name"
-                            />
-                        </div>
-
-                        <!-- Middle Name -->
-                        <div class="space-y-2">
-                            <label class="block text-sm font-medium text-gray-700">Middle Name</label>
-                            <TextInput
-                                v-model="studentData.middle_name"
-                                type="text"
-                                class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-all bg-white text-gray-900"
-                                placeholder="Enter middle name (optional)"
-                            />
-                        </div>
-
-                        <!-- Last Name -->
-                        <div class="space-y-2">
-                            <label class="block text-sm font-medium text-gray-700">Last Name</label>
-                            <TextInput
-                                v-model="studentData.last_name"
-                                type="text"
-                                class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-all bg-white text-gray-900"
-                                placeholder="Enter last name"
-                            />
-                        </div>
-
-                        <!-- Email -->
-                        <div class="space-y-2">
-                            <label class="block text-sm font-medium text-gray-700">Email</label>
-                            <TextInput
-                                v-model="studentData.email"
-                                type="email"
-                                class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-all bg-white text-gray-900"
-                                placeholder="Enter email address"
-                            />
-                        </div>
-
-                        <!-- Program -->
-                        <div class="space-y-2">
-                            <label class="block text-sm font-medium text-gray-700">Program</label>
-                            <select
-                                v-model="studentData.program_id"
-                                class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-all bg-white text-gray-900"
-                            >
-                                <option disabled value="">-- Select Program --</option>
-                                <option 
-                                    v-for="program in prog.programs" 
-                                    :key="program.id" 
-                                    :value="program.id"
+            <div v-if="modalState" class="fixed inset-0 bg-white/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                <Transition
+                    enter-active-class="ease-out duration-300"
+                    enter-from-class="opacity-0 scale-95"
+                    enter-to-class="opacity-100 scale-100"
+                    leave-active-class="ease-in duration-200"
+                    leave-from-class="opacity-100 scale-100"
+                    leave-to-class="opacity-0 scale-95"
+                >
+                    <div v-if="modalState" class="bg-white/95 backdrop-blur-md rounded-xl shadow-2xl w-full max-w-6xl relative border border-gray-200/50">
+                        <!-- Header -->
+                        <div class="px-8 py-5 border-b border-gray-200/50 bg-white/60 backdrop-blur-sm rounded-t-xl">
+                            <div class="flex items-center justify-between">
+                                <h2 class="text-2xl font-semibold text-gray-900">
+                                    {{ selectedUser ? 'Edit Student' : 'Add New Student' }}
+                                </h2>
+                                <button
+                                    @click="ModalState(false)"
+                                    class="p-2 hover:bg-gray-200 rounded-lg transition-colors text-gray-500 hover:text-gray-700"
                                 >
-                                    {{ program.program_code }}
-                                </option>
-                            </select>
-                            <div v-if="!prog.programs.length" class="text-sm text-gray-500 italic">
-                                Loading programs...
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                    </svg>
+                                </button>
                             </div>
                         </div>
 
-                        <!-- Year Level -->
-                        <div class="space-y-2">
-                            <label class="block text-sm font-medium text-gray-700">Year Level</label>
-                            <select
-                                v-model="studentData.year_level"
-                                class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-all bg-white text-gray-900"
-                            >
-                                <option disabled value="">-- Select Year Level --</option>
-                                <option value="1st year">1st Year</option>
-                                <option value="2nd year">2nd Year</option>
-                                <option value="3rd year">3rd Year</option>
-                                <option value="4th year">4th Year</option>
-                            </select>
-                        </div>
+                        <!-- Form Content -->
+                        <div class="p-8">
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                <!-- Student ID -->
+                                <div class="space-y-2">
+                                    <label class="block text-sm font-medium text-gray-700">Student ID</label>
+                                    <TextInput
+                                        v-model="studentData.student_id"
+                                        type="text"
+                                        class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-all bg-white text-gray-900"
+                                        placeholder="Enter student ID"
+                                    />
+                                </div>
 
-                        <!-- Section -->
-                        <div class="space-y-2">
-                            <label class="block text-sm font-medium text-gray-700">Section</label>
-                            <select
-                                v-model="studentData.section_id"
-                                class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-all bg-white text-gray-900"
-                            >
-                                <option disabled value="">-- Select Section --</option>
-                                <option 
-                                    v-for="section in secNotPaginated" 
-                                    :key="section.id" 
-                                    :value="section.id"
-                                >
-                                    {{ section.name }}
-                                </option>
-                            </select>
-                            <div v-if="!secNotPaginated.length" class="text-sm text-gray-500 italic">
-                                Loading sections...
+                                <!-- RFID UID -->
+                                <div class="space-y-2">
+                                    <label class="block text-sm font-medium text-gray-700">RFID UID</label>
+                                    <TextInput
+                                        v-model="studentData.rfid_uid"
+                                        type="text"
+                                        class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-all bg-white text-gray-900"
+                                        placeholder="Scan or enter RFID"
+                                    />
+                                </div>
+
+                                <!-- First Name -->
+                                <div class="space-y-2">
+                                    <label class="block text-sm font-medium text-gray-700">First Name</label>
+                                    <TextInput
+                                        v-model="studentData.first_name"
+                                        type="text"
+                                        class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-all bg-white text-gray-900"
+                                        placeholder="Enter first name"
+                                    />
+                                </div>
+
+                                <!-- Middle Name -->
+                                <div class="space-y-2">
+                                    <label class="block text-sm font-medium text-gray-700">Middle Name</label>
+                                    <TextInput
+                                        v-model="studentData.middle_name"
+                                        type="text"
+                                        class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-all bg-white text-gray-900"
+                                        placeholder="Enter middle name (optional)"
+                                    />
+                                </div>
+
+                                <!-- Last Name -->
+                                <div class="space-y-2">
+                                    <label class="block text-sm font-medium text-gray-700">Last Name</label>
+                                    <TextInput
+                                        v-model="studentData.last_name"
+                                        type="text"
+                                        class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-all bg-white text-gray-900"
+                                        placeholder="Enter last name"
+                                    />
+                                </div>
+
+                                <!-- Email -->
+                                <div class="space-y-2">
+                                    <label class="block text-sm font-medium text-gray-700">Email</label>
+                                    <TextInput
+                                        v-model="studentData.email"
+                                        type="email"
+                                        class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-all bg-white text-gray-900"
+                                        placeholder="Enter email address"
+                                    />
+                                </div>
+
+                                <!-- Program -->
+                                <div class="space-y-2">
+                                    <label class="block text-sm font-medium text-gray-700">Program</label>
+                                    <select
+                                        v-model="studentData.program_id"
+                                        class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-all bg-white text-gray-900"
+                                    >
+                                        <option disabled value="">-- Select Program --</option>
+                                        <option 
+                                            v-for="program in prog.programs" 
+                                            :key="program.id" 
+                                            :value="program.id"
+                                        >
+                                            {{ program.program_code }}
+                                        </option>
+                                    </select>
+                                    <div v-if="!prog.programs.length" class="text-sm text-gray-500 italic">
+                                        Loading programs...
+                                    </div>
+                                </div>
+
+                                <!-- Year Level -->
+                                <div class="space-y-2">
+                                    <label class="block text-sm font-medium text-gray-700">Year Level</label>
+                                    <select
+                                        v-model="studentData.year_level"
+                                        class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-all bg-white text-gray-900"
+                                    >
+                                        <option disabled value="">-- Select Year Level --</option>
+                                        <option value="1st year">1st Year</option>
+                                        <option value="2nd year">2nd Year</option>
+                                        <option value="3rd year">3rd Year</option>
+                                        <option value="4th year">4th Year</option>
+                                    </select>
+                                </div>
+
+                                <!-- Section -->
+                                <div class="space-y-2">
+                                    <label class="block text-sm font-medium text-gray-700">Section</label>
+                                    <select
+                                        v-model="studentData.section_id"
+                                        class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-all bg-white text-gray-900"
+                                    >
+                                        <option disabled value="">-- Select Section --</option>
+                                        <option 
+                                            v-for="section in secNotPaginated" 
+                                            :key="section.id" 
+                                            :value="section.id"
+                                        >
+                                            {{ section.name }}
+                                        </option>
+                                    </select>
+                                    <div v-if="!secNotPaginated.length" class="text-sm text-gray-500 italic">
+                                        Loading sections...
+                                    </div>
+                                </div>
+
+                                <!-- Status -->
+                                <div class="space-y-2">
+                                    <label class="block text-sm font-medium text-gray-700">Status</label>
+                                    <select
+                                        v-model="studentData.status"
+                                        class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-all bg-white text-gray-900"
+                                    >
+                                        <option disabled value="">-- Select Status --</option>
+                                        <option value="active">Active</option>
+                                        <option value="inactive">Inactive</option>
+                                        <option value="restricted">Restricted</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Status -->
-                        <div class="space-y-2">
-                            <label class="block text-sm font-medium text-gray-700">Status</label>
-                            <select
-                                v-model="studentData.status"
-                                class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-all bg-white text-gray-900"
-                            >
-                                <option disabled value="">-- Select Status --</option>
-                                <option value="active">Active</option>
-                                <option value="inactive">Inactive</option>
-                                <option value="restricted">Restricted</option>
-                            </select>
+                        <!-- Footer -->
+                        <div class="px-8 py-4 border-t border-gray-200/50 bg-white/60 backdrop-blur-sm rounded-b-xl">
+                            <div class="flex justify-end gap-3">
+                                <button
+                                    @click="ModalState(false)"
+                                    class="px-6 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all font-medium"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    @click="saveStudent"
+                                    class="px-6 py-2.5 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-all font-medium"
+                                >
+                                    {{ selectedUser ? 'Update Student' : 'Save Student' }}
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-
-                <!-- Footer -->
-                <div class="px-8 py-4 border-t border-gray-200/50 bg-white/60 backdrop-blur-sm rounded-b-xl">
-                    <div class="flex justify-end gap-3">
-                        <button
-                            @click="ModalState(false)"
-                            class="px-6 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all font-medium"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            @click="saveStudent"
-                            class="px-6 py-2.5 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-all font-medium"
-                        >
-                            {{ selectedUser ? 'Update Student' : 'Save Student' }}
-                        </button>
-                    </div>
-                </div>
+                </Transition>
             </div>
         </Transition>
-    </div>
-</Transition>
             </div>
         </div>
     </AuthenticatedLayout>

@@ -2,12 +2,12 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import axios from 'axios';
 import { useApiUrl } from '../api/api';
-import { useToast } from 'vue-toastification';
+import { useToast } from './toastification/useToast';
 
-const toast = useToast();
 const { api, getAuthHeader } = useApiUrl();
 
 export const useLaboratoryStore = defineStore('laboratory', () => {
+  const toast = useToast(); // Move inside store
   const laboratories = ref([]);
   const statusFilter = ref('all');
   const isLoading = ref(false);

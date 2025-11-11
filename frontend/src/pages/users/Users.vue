@@ -14,7 +14,7 @@ import {
     ArrowPathIcon
 } from '@heroicons/vue/24/outline';
 import Table from '../../components/table/Table.vue';
-import { useToast } from 'vue-toastification';
+import { useToast } from '../../composable/toastification/useToast';
 import { watch } from 'vue';
 import Modal from '../../components/modal/Modal.vue';
 import TextInput from '../../components/input/TextInput.vue';

@@ -2,7 +2,7 @@
 import { ref, onMounted, watch, computed, toRef, toRefs } from 'vue';
 import AuthenticatedLayout from '../../layouts/auth/AuthenticatedLayout.vue';
 import Table from '../../components/table/Table.vue';
-import { useToast } from 'vue-toastification';
+import { useToast } from '../../composable/toastification/useToast';
 import * as XLSX from 'xlsx';
 import { useComputerLogStore } from '../../composable/computerLog';
 import { DocumentArrowDownIcon, ExclamationCircleIcon, FunnelIcon } from '@heroicons/vue/24/outline';

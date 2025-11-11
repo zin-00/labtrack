@@ -2,7 +2,9 @@
         import { useApiUrl } from "../api/api";
         import axios from "axios";
         import { useStates } from "../composable/states";
+        import { useToast } from "./toastification/useToast";
         import {ref, toRefs} from "vue";
+
         const {api , getAuthHeader} = useApiUrl();
 
         export const useAdminStore = defineStore('admin', () => {
@@ -22,10 +24,7 @@
                     pagination,
                 } = toRefs(states);
 
-            const {
-                    success,
-                    error
-            } = useStates();
+            const {success, error} = useToast();
 
             const storeAdmin = async (data) => {
                 try {

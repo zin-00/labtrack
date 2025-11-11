@@ -146,7 +146,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
-import { useToast } from 'vue-toastification';
+import { useToast } from '../../composable/toastification/useToast';
 import Modal from './Modal.vue';
 import axios from 'axios';
 import { useApiUrl } from '../../api/api';

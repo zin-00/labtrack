@@ -1,13 +1,14 @@
  import { reactive, ref, toRefs} from 'vue';
 import { defineStore } from 'pinia';
 import { useApiUrl } from '../api/api';
-import { useToast } from 'vue-toastification';
+import { useToast } from './toastification/useToast';
 import axios from 'axios';
 import {useStates} from '../composable/states';
 
 const { api, getAuthHeader } = useApiUrl();
 
  export const useComputerStore = defineStore('computer', () => {
+    const toast = useToast(); // Move inside store
  const states = useStates();
  const {
           isLoading,
@@ -16,10 +17,6 @@ const { api, getAuthHeader } = useApiUrl();
           modalState,
           isSubmitting,
         } = toRefs(states);
-  const {
-        success,
-        error,
-        } = states;
   const labs = ref([]);
   const errorMessage = ref("");
 
@@ -50,7 +47,7 @@ const { api, getAuthHeader } = useApiUrl();
       computers.value = response.data.computers || [];
     } catch (err) {
       computers.value = [];
-      error('Failed to fetch computers');
+      toast.error('Error', 'Failed to fetch computers');
       console.error('Error fetching computers:', err);
     } finally {
       isLoading.value = false;
@@ -62,7 +59,7 @@ const { api, getAuthHeader } = useApiUrl();
       computers.value = response.data.computers || [];
     } catch (err) {
       computers.value = [];
-      error('Failed to fetch computers');
+      toast.error('Error', 'Failed to fetch computers');
       console.error('Error fetching computers:', err);
     }
   };
@@ -74,7 +71,7 @@ const { api, getAuthHeader } = useApiUrl();
       labs.value = response.data.laboratories || [];
     } catch (err) {
       labs.value = [];
-      error('Failed to fetch labs');
+      toast.error('Error', 'Failed to fetch labs');
       console.error('Error fetching labs:', err);
     } finally {
       isLoading.value = false;
@@ -87,7 +84,7 @@ const { api, getAuthHeader } = useApiUrl();
         computers.value = response.data.computers || [];
         console.log(computers.value);
     }catch(err) {
-      error('Failed to fetch computers without labs');
+      toast.error('Error', 'Failed to fetch computers without labs');
       console.error('Error fetching computers without labs:', err);
     }
   }
@@ -95,9 +92,9 @@ const { api, getAuthHeader } = useApiUrl();
   const storeComputer = async (data) => {
     try {
       const response = await axios.post(`${api}/computers`, data, getAuthHeader());
-      success(response.data.message || 'Computer added successfully!');
+      toast.success('Success', response.data.message || 'Computer added successfully!');
     } catch (err) {
-      error('Failed to add computer.');
+      toast.error('Error', 'Failed to add computer.');
       console.error('Error storing computer:', err);
     }
   };
@@ -105,9 +102,9 @@ const { api, getAuthHeader } = useApiUrl();
   const updateComputer = async (id, data) => {
     try {
       await axios.put(`${api}/computers/update/${id}`, data, getAuthHeader());
-      success('Computer updated successfully!');
+      toast.success('Success', 'Computer updated successfully!');
     } catch (err) {
-      error('Failed to update computer.');
+      toast.error('Error', 'Failed to update computer.');
       console.error('Error updating computer:', err);
     }
   };
@@ -119,7 +116,7 @@ const { api, getAuthHeader } = useApiUrl();
         fetchNoLabComputers();
         return true;
     } catch (err) {
-      error('Failed to assign lab to computer.');
+      toast.error('Error', 'Failed to assign lab to computer.');
       console.error('Error assigning lab to computer:', err);
       return false;
     }
@@ -128,10 +125,10 @@ const { api, getAuthHeader } = useApiUrl();
   const unassignLabFromComputer = async (computerIds) => {
     try {
         const response = await axios.post(`${api}/unassign-laboratories`, {computer_ids: computerIds }, getAuthHeader());
-        success(response.data.message || 'Lab unassigned from computer successfully!');
+        toast.success('Success', response.data.message || 'Lab unassigned from computer successfully!');
         return true;
     } catch (err) {
-      error('Failed to unassign lab from computer.');
+      toast.error('Error', 'Failed to unassign lab from computer.');
       console.error('Error unassigning lab from computer:', err);
       return false;
     }
@@ -140,9 +137,9 @@ const { api, getAuthHeader } = useApiUrl();
   const deleteComputer = async (id) => {
     try {
       await axios.delete(`${api}/computers/${id}`, getAuthHeader());
-      success('Computer deleted successfully!');
+      toast.success('Success', 'Computer deleted successfully!');
     } catch (err) {
-      error('Failed to delete computer.');
+      toast.error('Error', 'Failed to delete computer.');
       console.error('Error deleting computer:', err);
     }
   };
@@ -155,12 +152,12 @@ const { api, getAuthHeader } = useApiUrl();
         getAuthHeader()
       );
 
-      success(response.data.message || 'Computer unlocked successfully!');
+      toast.success('Success', response.data.message || 'Computer unlocked successfully!');
       console.log(response.data.message);
       await fetchComputers();
       return true;
     } catch(err) {
-      error(error.response?.data?.message || 'Failed to unlock computer.');
+      toast.error('Error', error.response?.data?.message || 'Failed to unlock computer.');
       console.error(err);
       return false;
     }
@@ -170,10 +167,10 @@ const unlockByAdmin = async (id) => {
   try {
     isLoading.value = true;
     const response = await axios.patch(`${api}/admin/unlock/${id}`,{}, getAuthHeader());
-    success(response.data.message)
+    toast.success('Success', response.data.message);
   } catch (err) {
     console.log(err);
-    error(err.response?.data?.message)
+    toast.error('Error', err.response?.data?.message);
   }finally{
     isLoading.value = false;
   }
@@ -195,7 +192,7 @@ const unlockAssignedComputer = async (rfid_uid) => {
     console.log('Computers:', response.data.computers);
     console.log('Student:', response.data.student);
 
-    success(response.data.message);
+    toast.success('Success', response.data.message);
 
     // Add to recent scans with proper data
     if (response.data.computers && response.data.computers.length > 0) {
@@ -215,7 +212,7 @@ const unlockAssignedComputer = async (rfid_uid) => {
     console.error('Response data:', err.response?.data);
 
     errorMessage.value = err.response?.data?.message || "An error occurred";
-    error(err.response?.data?.message || "An error occurred");
+    toast.error('Error', err.response?.data?.message || "An error occurred");
   } finally {
     isSubmitting.value = false;
   }
@@ -245,10 +242,10 @@ const unlockComputersByLab = async (labId, rfid_uid) => {
       {},
       getAuthHeader()
     );
-    success(response.data.message || 'Computers unlocked successfully!');
+    toast.success('Success', response.data.message || 'Computers unlocked successfully!');
     console.log(response.data.message);
   } catch (err) {
-    error(err.response?.data?.message || 'Failed to unlock computers.');
+    toast.error('Error', err.response?.data?.message || 'Failed to unlock computers.');
     console.error('Error unlocking computers by lab:', err);
   }
 }

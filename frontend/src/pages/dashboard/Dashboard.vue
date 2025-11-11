@@ -3,7 +3,7 @@ import StatCard from '../../components/card/StatCard.vue';
 import AuthenticatedLayout from '../../layouts/auth/AuthenticatedLayout.vue';
 import { computed, onMounted, watch, toRefs, ref } from 'vue';
 import { useStatusDistributionStore } from '../../composable/statistics';
-import { useToast } from 'vue-toastification';
+import { useToast } from '../../composable/toastification/useToast';
 import Table from '../../components/table/Table.vue';
 import { useStates } from '../../composable/states';
 import { 
