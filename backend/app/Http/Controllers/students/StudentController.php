@@ -57,7 +57,8 @@ class StudentController extends Controller
             'message' => 'Students retrieved successfully'
         ]);
     }
-    public function store(Request $request){
+   public function store(Request $request)
+    {
         $data = $request->validate([
             'student_id'    => ['required', 'string', 'max:255'],
             'rfid_uid'      => ['required', 'string', 'max:255'],
@@ -71,6 +72,18 @@ class StudentController extends Controller
             'status'        => ['required', 'in:active,inactive,restricted'],
         ]);
 
+        if (Student::where('student_id', $data['student_id'])->exists()) {
+            return response()->json(['message' => 'Student ID already exists'], 409);
+        }
+
+        if (Student::where('rfid_uid', $data['rfid_uid'])->exists()) {
+            return response()->json(['message' => 'RFID UID already exists'], 409);
+        }
+
+        if (Student::where('email', $data['email'])->exists()) {
+            return response()->json(['message' => 'Email already exists'], 409);
+        }
+
         $student = Student::create($data);
 
         $audit_logs = AuditLogs::create([
@@ -79,7 +92,7 @@ class StudentController extends Controller
             'entity_type'=> 'Student',
             'entity_id'  => $student->id,
             'ip_address' => $request->ip(),
-            'description'=> 'Added new student' .$student->student_id,
+            'description'=> 'Added new student ' . $student->student_id,
         ]);
 
         AuditEvent::dispatch($audit_logs);
@@ -89,6 +102,7 @@ class StudentController extends Controller
             'student' => $student
         ], 201);
     }
+
 public function importStudents(Request $request)
 {
     $validator = Validator::make($request->all(), [
