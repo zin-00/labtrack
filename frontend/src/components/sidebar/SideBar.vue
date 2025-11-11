@@ -19,7 +19,7 @@
     <div 
       v-if="sidebarState !== 'closed' && screenWidth < 1024" 
       @click="closeSidebar" 
-      class="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
+      class="fixed inset-0  bg-white/50 backdrop-blur-sm bg-opacity-50 z-30 lg:hidden"
     />
     
     <!-- Sidebar -->

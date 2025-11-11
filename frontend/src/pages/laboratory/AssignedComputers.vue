@@ -553,7 +553,7 @@ onMounted(() => {
                 leave-from-class="opacity-100"
                 leave-to-class="opacity-0"
             >
-            <div v-if="showBulkAssignModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+            <div v-if="showBulkAssignModal" class="fixed inset-0  bg-white/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
                 <Transition
                     enter-active-class="transition-all duration-300"
                     leave-active-class="transition-all duration-200"
