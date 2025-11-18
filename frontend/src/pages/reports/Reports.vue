@@ -100,6 +100,396 @@ const handleDeleteReport = async (report) => {
     openDeleteModal(report);
 };
 
+const escapeHtml = (text = '') => String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+const getIncidentReportHtml = (report) => {
+    const incidentDate = report.incident_date || report.date || report.created_at;
+    const reporterName = report.reported_by || report.fullname || report.student_name || '';
+    const involvedName = report.person_involved || report.student_name || report.fullname || '';
+    const formattedDate = incidentDate ? dayjs(incidentDate).format('MMMM D, YYYY') : '';
+    const description = (report.description || '').replace(/\r?\n/g, '<br>');
+    const logoSrc = new URL('../../assets/log-trans.png', import.meta.url).href;
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Equipment/Facility Incident Report Form</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 0.5in;
+        }
+        
+        @media print {
+            body {
+                margin: 0;
+                padding: 0;
+                background-color: white;
+            }
+            
+            .form-wrapper {
+                box-shadow: none;
+                border: none;
+                page-break-after: auto;
+            }
+        }
+
+        body {
+            margin: 0;
+            padding: 30px 0;
+            background-color: #f5f5f5;
+            display: flex;
+            justify-content: center;
+            font-family: "Times New Roman", serif;
+        }
+
+        .form-wrapper {
+            width: 820px;
+            max-width: 100%;
+            padding: 25px 35px 30px;
+            background-color: white;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .header-table td {
+            border: 1px solid #000;
+            vertical-align: top;
+            padding: 0;
+        }
+
+        .header-top td {
+            text-align: center;
+            font-weight: bold;
+            font-size: 14px;
+            padding: 6px 10px;
+            letter-spacing: 0.5px;
+        }
+
+        .version-cell {
+            width: 210px;
+            text-align: center;
+            padding: 12px 10px 14px;
+        }
+
+        .version-number {
+            font-weight: bold;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        .seal-box {
+            border: 1px solid #000;
+            height: 105px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            line-height: 1.2;
+            padding: 4px;
+        }
+
+        .seal-box img {
+            width: 100px;
+            height: 100px;
+            object-fit: contain;
+        }
+
+        .docname-cell {
+            text-align: center;
+            font-weight: bold;
+            font-size: 16px;
+            line-height: 1.4;
+            padding: 18px 12px;
+        }
+
+        .docinfo-cell {
+            font-size: 12px;
+            padding: 10px;
+        }
+
+        .doc-info-heading {
+            font-weight: bold;
+            letter-spacing: 0.5px;
+        }
+
+        .doc-info-line {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid #000;
+            padding: 4px 0;
+        }
+
+        .doc-info-line:last-child {
+            border-bottom: none;
+        }
+
+        .doc-info-line.stacked {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 4px;
+        }
+
+        .instructions {
+            font-size: 13px;
+            margin: 18px 0 12px;
+            line-height: 1.4;
+        }
+
+        .detail-table td {
+            border: 1px solid #000;
+            padding: 10px 12px;
+            font-size: 13px;
+            vertical-align: top;
+        }
+
+        .detail-label {
+            width: 42%;
+            font-weight: bold;
+        }
+
+        .detail-field {
+            width: 58%;
+            min-height: 38px;
+        }
+
+        .detail-textarea {
+            min-height: 170px;
+        }
+
+        .detail-note {
+            font-style: italic;
+            font-weight: normal;
+        }
+
+        .full-width-table td {
+            border: 1px solid #000;
+            padding: 10px 12px;
+            font-size: 13px;
+        }
+
+        .recommendations {
+            border: 1px solid #000;
+            border-top: none;
+            padding: 12px;
+            font-size: 13px;
+        }
+
+        .checkbox {
+            display: inline-flex;
+            align-items: center;
+            margin-right: 20px;
+            font-weight: bold;
+        }
+
+        .checkbox-box {
+            width: 16px;
+            height: 16px;
+            border: 1px solid #000;
+            margin-right: 6px;
+        }
+
+        .signature-table td {
+            border: 1px solid #000;
+            padding: 10px;
+            font-size: 13px;
+            vertical-align: top;
+        }
+
+        .section-title {
+            border-top: 2px solid #000;
+            border-bottom: 1px solid #000;
+            margin-top: 18px;
+            padding: 6px 0;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 13px;
+        }
+
+        .property-table td {
+            border: 1px solid #000;
+            padding: 10px;
+            font-size: 13px;
+        }
+
+        .footer-note {
+            margin: 25px 0 5px;
+            font-weight: bold;
+        }
+
+        .signatory {
+            font-weight: bold;
+            margin: 0;
+        }
+
+        .signatory span {
+            font-weight: normal;
+        }
+
+        .address {
+            margin: 8px 0 0;
+            font-size: 12px;
+        }
+
+        .signature-line {
+            border-bottom: 1px solid #000;
+            margin: 15px 0;
+            height: 28px;
+        }
+    </style>
+</head>
+<body>
+    <div class="form-wrapper">
+        <table class="header-table">
+            <tr class="header-top">
+                <td>VERSION NO. 2</td>
+                <td style="border-bottom: none; text-align: left;">DOCUMENT NAME</td>
+                <td>DOCUMENT NO.</td>
+            </tr>
+            <tr>
+                <td class="version-cell">
+                    <div class="version-number">2</div>
+                    <div class="seal-box">
+                        <img src="${logoSrc}" alt="School Seal">
+                    </div>
+                </td>
+                <td class="docname-cell" style="border-top: none;">
+                    <p>EQUIPMENT/FACILITY INCIDENT <br>
+                    REPORT FORM</p>
+                </td>
+                <td class="docinfo-cell">
+                    <div class="doc-info-line">
+                        <span class="doc-info-heading">REVISION NO.</span>
+                        <span>2</span>
+                    </div>
+                    <div class="doc-info-line stacked">
+                        <span class="doc-info-heading">EFFECTIVITY DATE</span>
+                        <span>SEPTEMBER 20, 2023</span>
+                    </div>
+                    <div class="doc-info-line">
+                        <span class="doc-info-heading">PAGE NO.</span>
+                        <span>Page 1 of 1</span>
+                    </div>
+                </td>
+            </tr>
+        </table>
+
+        <p class="instructions">
+            Please report any incident or issues with the school's equipment/facility. This form shall be sent to the Property Office for review and appropriate action.
+        </p>
+
+        <table class="detail-table">
+            <tr>
+                <td class="detail-label">Name of the person filling out this form:</td>
+                <td class="detail-field">${escapeHtml(reporterName)}</td>
+            </tr>
+            <tr>
+                <td class="detail-label">Date of incident:</td>
+                <td class="detail-field">${escapeHtml(formattedDate)}</td>
+            </tr>
+            <tr>
+                <td class="detail-label">Name of the person the incident/issue occurred <span class="detail-note">(if applicable)</span>:</td>
+                <td class="detail-field">${escapeHtml(involvedName)}</td>
+            </tr>
+            <tr>
+                <td class="detail-label">Please describe the situation with as much detail as possible:</td>
+                <td class="detail-field detail-textarea">${description}</td>
+            </tr>
+        </table>
+
+        <div class="full-width-table" style="margin-top: -1px;">
+            <div class="full-width-table" style="border-top: none;">
+                <table class="full-width-table" style="border-top: none;">
+                    <tr>
+                        <td>Recommendation(s):</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        <div class="recommendations">
+            <span class="checkbox"><span class="checkbox-box"></span>For Repair</span>
+            <span class="checkbox"><span class="checkbox-box"></span>For Replacement</span>
+            <div style="margin-top: 10px;">Others, please specify:</div>
+            <div class="signature-line"></div>
+        </div>
+
+        <table class="signature-table">
+            <tr>
+                <td width="55%">Signature of the person filling out this form:</td>
+                <td width="45%">Actual Date:</td>
+            </tr>
+            <tr>
+                <td>Signature and Name of Immediate Head:</td>
+                <td>Actual Date:</td>
+            </tr>
+        </table>
+
+        <div class="section-title">This section is for Property Office Personnel only</div>
+
+        <table class="property-table">
+            <tr>
+                <td>Inspecting/Receiving Property Personnel Name &amp; Signature:</td>
+            </tr>
+            <tr>
+                <td style="display: flex; gap: 30px;">
+                    <span>Actual Date Received: ____________________</span>
+                    <span>Actual Time Received: ____________________</span>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    Action(s) Taken:
+                    <div class="signature-line"></div>
+                    <div class="signature-line"></div>
+                    <div class="signature-line"></div>
+                </td>
+            </tr>
+        </table>
+
+        <p class="footer-note">Noted by:</p>
+        <p class="signatory">IAN P. ABUZO, CPA, MAIA<br><span>Accounting and Finance Office Head</span></p>
+        <p class="address">Barangay 5, San Francisco, Agusan del Sur, Philippines 8501 | +63 85 8390321 | +63 85 9855006</p>
+    </div>
+</body>
+</html>`;
+};
+
+const handleExportReport = (report) => {
+    try {
+        const html = getIncidentReportHtml(report);
+        const exportWindow = window.open('', '_blank', 'width=900,height=1100');
+
+        if (!exportWindow) {
+            alert('Please allow popups to export the report.');
+            return;
+        }
+
+        exportWindow.document.open();
+        exportWindow.document.write(html);
+        exportWindow.document.close();
+        
+        exportWindow.onload = () => {
+            setTimeout(() => {
+                exportWindow.print();
+            }, 250);
+        };
+    } catch (error) {
+        console.error('Failed to export incident report:', error);
+        alert('Failed to export report. Please try again.');
+    }
+};
+
 onMounted(() => {
     fetchReports();
 });
@@ -247,6 +637,14 @@ onMounted(() => {
                                         </td>
                                         <td class="px-4 py-3 whitespace-nowrap">
                                             <div class="flex items-center justify-center gap-2">
+                                                <button
+                                                    @click="handleExportReport(report)"
+                                                    title="Export Incident Report"
+                                                    class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-md transition-colors"
+                                                >
+                                                    <FileTextIcon class="h-3.5 w-3.5" />
+                                                    Export
+                                                </button>
                                                 <button
                                                     @click="handleViewReport(report)"
                                                     title="View Details"

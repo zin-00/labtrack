@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Equipment/Facility Incident Report Form</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 5mm;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            width: 190mm; /* Account for margins */
+            height: 277mm; /* Account for margins */
+            box-sizing: border-box;
+            padding: 5mm;
+            font-size: 10px;
+            line-height: 1.1;
+        }
+        
+        /* Header section styling */
+        .header-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid #000;
+            margin-bottom: 5px;
+        }
+        
+        .header-table td {
+            border: 1px solid #000;
+            padding: 2px;
+            vertical-align: middle;
+        }
+        
+        .logo-cell {
+            width: 15%;
+            text-align: center;
+        }
+        
+        .logo-placeholder {
+            width: 40px;
+            height: 40px;
+            border: 1px solid #000;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 8px;
+            text-align: center;
+        }
+        
+        .title-cell {
+            width: 55%;
+            text-align: center;
+            font-weight: bold;
+            font-size: 12px;
+            padding: 5px 3px;
+        }
+        
+        .info-cell {
+            width: 30%;
+        }
+        
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .info-table td {
+            border: 1px solid #000;
+            padding: 2px;
+            font-size: 7px;
+        }
+        
+        .info-label {
+            background-color: #f0f0f0;
+            font-weight: bold;
+            width: 40%;
+        }
+        
+        /* Instruction text */
+        .instruction {
+            margin: 5px 0;
+            font-size: 9px;
+            text-align: justify;
+        }
+        
+        /* Main form table */
+        .form-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 5px;
+        }
+        
+        .form-table td {
+            border: 1px solid #000;
+            padding: 3px;
+            vertical-align: top;
+        }
+        
+        .field-label {
+            font-weight: bold;
+            width: 35%;
+            background-color: #f8f8f8;
+            font-size: 9px;
+        }
+        
+        .field-input {
+            width: 65%;
+            min-height: 15px;
+            font-size: 9px;
+        }
+        
+        .description-cell {
+            height: 40px; /* Reduced from 80px */
+        }
+        
+        /* Recommendation section */
+        .checkbox-line {
+            margin: 3px 0;
+        }
+        
+        .checkbox {
+            display: inline-block;
+            width: 9px;
+            height: 9px;
+            border: 1px solid #000;
+            margin-right: 3px;
+            text-align: center;
+            line-height: 7px;
+            font-size: 8px;
+        }
+        
+        /* Signature section */
+        .signature-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 8px;
+        }
+        
+        .signature-table td {
+            border: 1px solid #000;
+            padding: 3px;
+            height: 25px; /* Reduced from 40px */
+            vertical-align: bottom;
+            font-size: 9px;
+        }
+        
+        /* Property office section */
+        .property-section {
+            margin-top: 8px;
+        }
+        
+        .property-divider {
+            border-top: 1px solid #000;
+            margin: 3px 0 5px 0;
+        }
+        
+        .property-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 9px;
+        }
+        
+        .property-line {
+            margin: 4px 0;
+            font-size: 9px;
+        }
+        
+        .property-inline {
+            display: inline-block;
+            margin-right: 20px;
+            font-size: 9px;
+        }
+        
+        .action-lines {
+            margin: 5px 0;
+        }
+        
+        .action-line {
+            margin: 3px 0;
+            border-bottom: 1px solid #000;
+            height: 12px; /* Reduced from 18px */
+        }
+        
+        /* Footer section */
+        .noted-section {
+            margin: 8px 0 3px 0;
+            font-weight: bold;
+            font-size: 9px;
+        }
+        
+        .footer-name {
+            font-weight: bold;
+            margin: 3px 0;
+            font-size: 9px;
+        }
+        
+        .footer-title {
+            margin: 2px 0 8px 0;
+            font-size: 8px;
+        }
+        
+        .contact-info {
+            font-size: 8px;
+            margin-top: 5px;
+        }
+        
+        /* Print-specific styles */
+        @media print {
+            body {
+                width: 190mm;
+                height: 277mm;
+                padding: 5mm;
+                font-size: 9px;
+            }
+            
+            /* Further reduce sizes for print */
+            .header-table td {
+                padding: 1px;
+            }
+            
+            .logo-placeholder {
+                width: 35px;
+                height: 35px;
+                font-size: 7px;
+            }
+            
+            .title-cell {
+                font-size: 11px;
+                padding: 3px 2px;
+            }
+            
+            .info-table td {
+                padding: 1px;
+                font-size: 6px;
+            }
+            
+            .instruction {
+                font-size: 8px;
+            }
+            
+            .form-table td {
+                padding: 2px;
+            }
+            
+            .field-label, .field-input {
+                font-size: 8px;
+            }
+            
+            .signature-table td {
+                padding: 2px;
+                height: 20px;
+                font-size: 8px;
+            }
+            
+            .property-title, .property-line, .property-inline {
+                font-size: 8px;
+            }
+            
+            .noted-section, .footer-name {
+                font-size: 8px;
+            }
+            
+            .footer-title {
+                font-size: 7px;
+            }
+            
+            .contact-info {
+                font-size: 7px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header section -->
+    <table class="header-table">
+        <tr>
+            <td rowspan="4" class="logo-cell">
+            </td>
+            <td rowspan="4" class="title-cell">
+                EQUIPMENT/FACILITY INCIDENT<br>
+                REPORT FORM
+            </td>
+            <td class="info-cell">
+                <table class="info-table">
+                    <tr>
+                        <td class="info-label">VERSION NO.</td>
+                        <td>2</td>
+                        <td class="info-label">DOCUMENT NO.</td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+        <tr>
+            <td class="info-cell">
+                <table class="info-table">
+                    <tr>
+                        <td class="info-label">DOCUMENT NAME</td>
+                        <td colspan="2">EQUIPMENT/FACILITY INCIDENT REPORT FORM</td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+        <tr>
+            <td class="info-cell border-none">
+               
+            </td>
+        </tr>
+        <tr>
+            <td class="info-cell">
+
+            </td>
+        </tr>
+    </table>
+
+    <!-- Instruction text -->
+    <p class="instruction">
+        Please report any incident or issues with the school's equipment/facility. This form shall be sent to the Property Office for review and appropriate action.
+    </p>
+
+    <!-- Main form -->
+    <table class="form-table">
+        <tr>
+            <td class="field-label">Name of the person filling out this form:</td>
+            <td class="field-input">&nbsp;</td>
+        </tr>
+        <tr>
+            <td class="field-label">Date of incident:</td>
+            <td class="field-input">&nbsp;</td>
+        </tr>
+        <tr>
+            <td class="field-label">Name of the person the incident/issue occurred (if applicable):</td>
+            <td class="field-input">&nbsp;</td>
+        </tr>
+        <tr>
+            <td class="field-label">Please describe the situation with as much detail as possible:</td>
+            <td class="field-input description-cell">&nbsp;</td>
+        </tr>
+        <tr>
+            <td class="field-label">Recommendation(s):</td>
+            <td class="field-input">
+                <div class="checkbox-line">
+                    <span class="checkbox">□</span> For Repair
+                    <span style="margin-left: 30px;" class="checkbox">□</span> For Replacement
+                </div>
+                <div class="checkbox-line">
+                    Others, please specify: _________________________________________
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    <!-- Signature section -->
+    <table class="signature-table">
+        <tr>
+            <td style="width: 50%;">Signature of the person filling out this form:</td>
+            <td style="width: 50%;">Actual Date:</td>
+        </tr>
+        <tr>
+            <td>Signature and Name of Immediate Head:</td>
+            <td>Actual Date:</td>
+        </tr>
+    </table>
+
+    <!-- Property office section -->
+    <div class="property-section">
+        <div class="property-divider"></div>
+        <p class="property-title">This section is for Property Office Personnel only</p>
+        
+        <p class="property-line">
+            Inspecting/Receiving Property Personnel Name & Signature: ____________________________
+        </p>
+        
+        <div>
+            <span class="property-inline">Actual Date Received: ___________________</span>
+            <span class="property-inline">Actual Time Received: ___________________</span>
+        </div>
+        
+        <p class="property-title">Action(s) Taken:</p>
+        <div class="action-lines">
+            <div class="action-line"></div>
+            <div class="action-line"></div>
+            <div class="action-line"></div>
+        </div>
+        
+        <p class="noted-section">Noted by:</p>
+        <p class="footer-name">IAN P. ABUZO, CPA, MAIA</p>
+        <p class="footer-title">Accounting and Finance Office Head</p>
+    </div>
+
+    <!-- Contact information -->
+    <p class="contact-info">
+        Barangay 5, San Francisco, Agusan del Sur, Philippines 8501 | +63 85 8390321 | +63 85 9855006
+    </p>
+</body>
+</html>

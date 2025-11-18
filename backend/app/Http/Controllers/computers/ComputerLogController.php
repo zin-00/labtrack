@@ -12,7 +12,7 @@ class ComputerLogController extends Controller
        public function index(Request $request){
         $query = ComputerLog::with('student', 'computer.laboratory');
 
-        // ✅ Date filters
+        // Date filters
         if ($request->has('from') && !empty($request->from)) {
             $query->whereDate('created_at', '>=', $request->from);
         }
@@ -21,7 +21,7 @@ class ComputerLogController extends Controller
             $query->whereDate('created_at', '<=', $request->to);
         }
 
-        // ✅ Default to today if no filters
+        // Default to today if no filters
         if (!$request->has('from') && !$request->has('to')) {
             $today = Carbon::now();
             $query->whereBetween('created_at', [$today->copy()->startOfDay(), $today->copy()->endOfDay()]);

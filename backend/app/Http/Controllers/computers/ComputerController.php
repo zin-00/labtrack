@@ -13,6 +13,7 @@ use App\Events\SetOnlineEvent;
 use App\Events\Student\ScanEvent;
 use App\Http\Controllers\Controller;
 use App\Models\Activity\AuditLogs;
+use App\Models\Attendance;
 use App\Models\Computer;
 use App\Models\ComputerActivityLog;
 use App\Models\ComputerLog;
@@ -575,6 +576,11 @@ public function unlockAssignedComputer(Request $request){
             'end_time' => null,
         ]);
 
+        $attendance = Attendance::create([
+            'student_id' => $student->id,
+            'attendance_date' => Carbon::now()->toDateString(),
+        ]);
+
         $unlockedComputers[] = [
             'id' => $computer->id,
             'computer_number' => $computer->computer_number,
@@ -588,7 +594,8 @@ public function unlockAssignedComputer(Request $request){
 
     return response()->json([
         'message' => 'Computers unlocked successfully',
-        'computers' => $unlockedComputers, // Return meaningful data
+        'computers' => $unlockedComputers,
+        'attendance' => $attendance,
         'student' => [
             'id' => $student->id,
             'name' => $student->first_name . ' ' . $student->last_name,
@@ -636,6 +643,12 @@ public function unlockComputersByLab(Request $request, $labId, $rfid_uid)
             'start_time'   => now(),
             'end_time'     => null,
         ]);
+
+        // Attendance record
+          $attendance = Attendance::create([
+                'student_id'      => $student->id,
+                'attendance_date' => now()->toDateString(),
+            ]);
 
         // Dispatch unlock event for each computer
         ComputerUnlockRequested::dispatch($computer, $rfid_uid);

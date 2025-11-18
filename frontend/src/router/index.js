@@ -23,6 +23,7 @@ import AuditLogs from '../pages/activity/AuditLogs.vue'
 import WorkStationMapping from '../pages/users/WorkStationMapping.vue'
 import LoginCloud from '../pages/auth/LoginCloud.vue'
 import AssignedComputers from '../pages/laboratory/AssignedComputers.vue'
+import Attendance from '../pages/attendance/Attendance.vue'
 
 
 
@@ -51,6 +52,7 @@ const routes = [
   { path: '/scan',                  name: 'scan',               component: Scan},
   { path: '/workstation-mapping',   name: 'workstation-mapping',component: WorkStationMapping, meta: { requiresAuth: true }},
   { path: '/assigned-computers',    name: 'assigned-computers', component: AssignedComputers, meta: { requiresAuth: true }},
+  { path: '/attendance',            name: 'attendance',         component: Attendance,         meta: { requiresAuth: true }},
 ]
 
 const router = createRouter({

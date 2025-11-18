@@ -24,7 +24,7 @@ import {
         Square2StackIcon,
         FolderIcon,
         DocumentIcon,
-        CommandLineIcon
+        CommandLineIcon,
         } from '@heroicons/vue/24/outline';
 import { 
         AkDashboard,
@@ -69,11 +69,12 @@ const mainContentClasses = computed(() => {
 });
 
 const SideItems = ref([
-  { id: 'dashboard',            label: 'Dashboard',         icon: AkDashboard,                  to: '/dashboard'},
-  { id: 'users',                label: 'Users',             icon: UsersIcon,                    to: '/users' ,              children: [
-    { id: 'students',           label: 'Students',          icon: AcademicCapIcon,              to: '/students'},
-    { id: 'admin',              label: 'Admin',             icon: LaUserTieSolid,               to: '/admin'},
-    { id: 'workstation_mapping', label: 'Mapping',          icon: CommandLineIcon ,            to: '/workstation-mapping'}
+  { id: 'dashboard',              label: 'Dashboard',         icon: AkDashboard,                  to: '/dashboard'},
+  { id: 'users',                  label: 'Users',             icon: UsersIcon,                    to: '/users' ,              children: [
+    { id: 'students',             label: 'Students',          icon: AcademicCapIcon,              to: '/students'},
+    { id: 'admin',                label: 'Admin',             icon: LaUserTieSolid,               to: '/admin'},
+    { id: 'workstation_mapping',  label: 'Mapping',           icon: CommandLineIcon ,            to: '/workstation-mapping'},
+    { id: 'attendance',           label: 'Attendance',        icon: EnvelopeIcon,                 to: '/attendance'},
   ]},
   { id: 'academic_settings',    label: 'Academics',         icon: Square2StackIcon,              children: [
     { id: 'program',            label: 'Programs',          icon: FolderKanbanIcon,             to: '/program'},

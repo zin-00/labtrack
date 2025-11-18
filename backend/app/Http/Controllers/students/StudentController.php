@@ -124,7 +124,7 @@ public function importStudents(Request $request)
     DB::beginTransaction();
     try {
         foreach ($request->students as $studentData) {
-            // ❌ Skip row if key fields are missing
+            // Skip row if key fields are missing
             if (
                 empty($studentData['student_id']) ||
                 empty($studentData['rfid_uid']) ||
@@ -142,7 +142,7 @@ public function importStudents(Request $request)
             }
 
             try {
-                // ✅ Validate only this student
+                // Validate only this student
                 $studentValidator = Validator::make($studentData, [
                     'student_id' => ['required', 'string', 'max:255', 'unique:students,student_id'],
                     'rfid_uid'   => ['required', 'string', 'max:255', 'unique:students,rfid_uid'],
@@ -177,7 +177,7 @@ public function importStudents(Request $request)
 
         DB::commit();
 
-        // 🔥 Create ONE audit log summarizing the bulk import
+        // Create ONE audit log summarizing the bulk import
         if ($importedCount > 0 || $skippedCount > 0) {
             $auditLog = AuditLogs::create([
                 'user_id'     => $request->user()->id,
