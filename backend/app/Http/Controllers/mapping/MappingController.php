@@ -308,6 +308,7 @@ class MappingController extends Controller
 
             // Shuffle for random mode
             if ($mode === 'random') {
+                shuffle($studentIds);
                 shuffle($computerIds);
             }
 
@@ -315,52 +316,69 @@ class MappingController extends Controller
             $assignedCount = 0;
             $skippedCount = 0;
 
-            // Assign each student to each computer (many-to-many)
-            foreach ($studentIds as $studentId) {
-                foreach ($computerIds as $computerId) {
-                    $computer = Computer::find($computerId);
+            // Determine the number of assignments (limited by the smaller array)
+            $assignmentCount = min(count($studentIds), count($computerIds));
 
-                    if (!$computer) {
-                        continue;
-                    }
+            // Assign students to computers 1-to-1
+            for ($i = 0; $i < $assignmentCount; $i++) {
+                $studentId = $studentIds[$i];
+                $computerId = $computerIds[$i];
 
-                    // Check if this exact student-computer pair already exists
-                    $exists = ComputerStudent::where('student_id', $studentId)
-                        ->where('computer_id', $computerId)
-                        ->exists();
+                $computer = Computer::find($computerId);
 
-                    if ($exists) {
-                        $skippedCount++;
-                        continue; // Skip if already assigned to this specific computer
-                    }
-
-                    $assignments[] = [
-                        'student_id' => $studentId,
-                        'computer_id' => $computerId,
-                        'laboratory_id' => $computer->laboratory_id ?? $request->laboratory_id,
-                        'created_at' => now(),
-                        'updated_at' => now()
-                    ];
-
-                    $assignedCount++;
+                if (!$computer) {
+                    $skippedCount++;
+                    continue;
                 }
+
+                // Check if this student is already assigned to ANY computer in this laboratory
+                $exists = ComputerStudent::where('student_id', $studentId)
+                    ->where('laboratory_id', $computer->laboratory_id)
+                    ->exists();
+
+                if ($exists) {
+                    $skippedCount++;
+                    Log::warning("Student {$studentId} already assigned in lab {$computer->laboratory_id}");
+                    continue;
+                }
+
+                $assignments[] = [
+                    'student_id' => $studentId,
+                    'computer_id' => $computerId,
+                    'laboratory_id' => $computer->laboratory_id ?? $request->laboratory_id,
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ];
+
+                $assignedCount++;
             }
 
             if (count($assignments) > 0) {
                 ComputerStudent::insert($assignments);
             }
 
-            $message = "$assignedCount assignment(s) created successfully";
+            $unassignedStudents = count($studentIds) - $assignedCount;
+            $unassignedComputers = count($computerIds) - $assignedCount;
+
+            $message = "$assignedCount student(s) assigned successfully";
             if ($skippedCount > 0) {
-                $message .= " ($skippedCount skipped - already assigned)";
+                $message .= " ($skippedCount skipped - already assigned in this lab)";
+            }
+            if ($unassignedStudents > 0) {
+                $message .= " ($unassignedStudents student(s) not assigned - not enough computers)";
+            }
+            if ($unassignedComputers > 0) {
+                $message .= " ($unassignedComputers computer(s) not used - not enough students)";
             }
 
             return response()->json([
                 'message' => $message,
-                'count' => $assignedCount,
+                'assigned_count' => $assignedCount,
                 'skipped' => $skippedCount,
                 'total_students' => count($studentIds),
-                'total_computers' => count($computerIds)
+                'total_computers' => count($computerIds),
+                'unassigned_students' => $unassignedStudents,
+                'unassigned_computers' => $unassignedComputers
             ]);
         } catch (\Exception $e) {
             Log::error('Error in bulkAssignAuto: ' . $e->getMessage());

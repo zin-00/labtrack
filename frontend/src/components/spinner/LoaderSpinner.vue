@@ -33,7 +33,7 @@ watch(() => props.isLoading, (newVal) => {
   >
     <div 
       v-if="isLoading"
-      class="absolute inset-0 bg-gradient-to-br from-gray-50 via-white to-gray-100 z-50 flex items-center justify-center backdrop-blur-sm"
+      class="fixed inset-0 bg-white/30 z-50 flex items-center justify-center backdrop-blur-xs"
     >
       <div class="text-center">
         <!-- Animated Container -->

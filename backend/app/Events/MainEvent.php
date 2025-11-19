@@ -7,18 +7,21 @@ use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class MainEvent
+class MainEvent implements ShouldBroadcast, ShouldQueue
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public $data;
     public $type;
-    public function __construct($type, $data)
+    public $action;
+    public function __construct($type, $action, $data)
     {
         $this->type = $type;
+        $this->action = $action;
         $this->data = $data;
     }
 
@@ -31,7 +34,12 @@ class MainEvent
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('channel-name'),
+            new Channel('main-channel'),
         ];
     }
+    public function broadcastAs()
+    {
+        return 'MainEvent';
+    }
+
 }

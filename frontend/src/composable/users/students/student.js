@@ -19,16 +19,18 @@ export const useStudentStore = defineStore('student', () => {
         } = toRefs(states);
 
 
-  const storeStudent = async (data) => {
-    try{
-      await axios.post(`${api}/students`, data, getAuthHeader());
-      toast.success('Success', 'Student added successfully!');
-      console.log('Toast should be visible now');
-    }catch(err){
-      toast.error('Error', 'Failed to add student');
-      console.error('Error storing student:', err);
-    }
+const storeStudent = async (data) => {
+  try {
+    const response = await axios.post(`${api}/students`, data, getAuthHeader());
+    toast.success('Success', response.data.message);
+  } catch (err) {
+    // Show actual backend validation/conflict message
+    const backendMessage = err.response?.data?.message || 'Failed to store student';
+    toast.error('Error', backendMessage);
+    console.error('Error storing student:', err);
   }
+}
+
   const fetchStudents = async (page = 1, filters = {}) => {
     try{
       isLoading.value = true;

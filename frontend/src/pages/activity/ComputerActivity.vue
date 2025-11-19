@@ -57,10 +57,25 @@ return allActivity.value.filter((act) => {
   });
 });
 
+const EventListener = async () => {
+  if (!window.Echo) {
+    console.error('Laravel Echo is not initialized.');
+    return;
+  }
+
+  window.Echo.channel('main-channel')
+    .listen('MainEvent', (e) => {
+      if (e.model === 'computer_activity' && e.action === 'created') {
+        getComputerActivity();
+      }
+    });
+};
+
 
 // 🔹 Initial fetch
 onMounted(() => {
   getComputerActivity();
+  EventListener();
 });
 </script>
 

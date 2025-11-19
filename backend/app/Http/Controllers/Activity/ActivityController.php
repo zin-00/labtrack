@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Activity;
 
+use App\Events\MainEvent;
 use App\Http\Controllers\Controller;
 use App\Models\BrowserActivity;
 use App\Models\Computer;
@@ -53,26 +54,25 @@ public function store(Request $request)
 
         if ($student) {
             $studentId = $student->student_id;
-            Log::info('Found student_id: ' . $studentId); // ← Add this log
+            Log::info('Found student_id: ' . $studentId);
         } else {
-            Log::warning('No student found with RFID: ' . $data['rfid_uid']); // ← Add this log
+            Log::warning('No student found with RFID: ' . $data['rfid_uid']);
         }
     } else {
-        Log::warning('No rfid_uid provided in request'); // ← Add this log
+        Log::warning('No rfid_uid provided in request');
     }
 
     $activity = BrowserActivity::create([
         'ip_address'   => $data['ip_address'],
         'computer_id'  => $computer->id,
-        'student_id'   => $studentId, // ← This should have a value
+        'student_id'   => $studentId,
         'browser_name' => $data['browser'] ?? null,
         'title'        => $data['title'] ?? null,
         'url'          => $data['url'] ?? null,
         'duration'     => $data['duration'] ?? null,
     ]);
 
-    Log::info('Browser activity created', ['activity' => $activity->toArray()]); // ← Add this log
-
+    broadcast(new MainEvent('browser_activity', 'created', $activity))->toOthers();
     return response()->json([
         'message' => 'Browser activity logged successfully',
         'activity' => $activity,

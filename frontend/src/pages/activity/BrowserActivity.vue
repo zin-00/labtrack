@@ -184,8 +184,24 @@ const exportToDocx = async () => {
     }
 };
 
+const EventListener = async ()=> {
+  if(window.Echo) {
+    window.Echo.private('main-channel')
+    .listen('.MainEvent', (e) => {
+        if(e.type === 'browser_activity' && e.action === 'created') {
+            getBrowserActivity(pagination.value.current_page, {
+                search: searchQuery.value,
+                dateFrom: dateFrom.value,
+                dateTo: dateTo.value,
+            });
+        }
+    });
+  }
+}
+
 onMounted(async () => {
 getBrowserActivity();
+await EventListener();
 });
 </script>
 

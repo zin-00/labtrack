@@ -188,8 +188,28 @@ const sendEmergencyUnlock = async (rfid_uid) => {
   }
 };
 
+const EventListener = () => {
+  if(window.Echo){
+    let echoChannel = window.Echo.channel('main-channel');
+    echoChannel.listen('.MainEvent', (e) => {
+      console.log('Event received:', e.message);
+      if(e.type === 'computer'){
+        fetchRecentScans();
+        // Update computer status in real-time
+        if(e.action === 'status-update' && e.data){
+          const index = computers.value.findIndex(c => c.id === e.data.id);
+          if(index !== -1){
+            computers.value[index] = { ...computers.value[index], ...e.data };
+          }
+        }
+      }
+    })
+  }
+}
+
 onMounted(() => {
   initializeEcho();
+  EventListener();
   fetchRecentScans();
   fetchLaboratories();
   fetchAllComputers();
@@ -494,12 +514,16 @@ onMounted(() => {
                     <p class="text-sm text-gray-600 font-mono">
                       <span class="font-medium text-gray-900">IP:</span> {{ computer.ip_address || 'N/A' }}
                     </p>
-                    <div v-if="computer.status" class="mt-2">
+                    <div class="mt-2 flex items-center gap-2">
                       <span :class="[
-                        'inline-flex items-center px-2 py-1 rounded-md text-xs font-medium',
-                        computer.status === 'online' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                        'inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium',
+                        computer.is_online ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                       ]">
-                        {{ computer.status }}
+                        <span :class="[
+                          'w-1.5 h-1.5 rounded-full',
+                          computer.is_online ? 'bg-green-500' : 'bg-red-500'
+                        ]"></span>
+                        {{ computer.is_online ? 'Online' : 'Offline' }}
                       </span>
                     </div>
                   </div>

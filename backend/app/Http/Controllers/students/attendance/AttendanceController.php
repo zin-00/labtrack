@@ -14,7 +14,8 @@ class AttendanceController extends Controller
         $query = Attendance::with([
             'student.program',
             'student.year_level',
-            'student.section'
+            'student.section',
+            'student.computerStudents.laboratory'
         ]);
 
         // Date filters
@@ -53,6 +54,13 @@ class AttendanceController extends Controller
             });
         }
 
+        // Filter by laboratory (where student unlocked computers)
+        if ($request->has('laboratory_id') && $request->laboratory_id !== 'all') {
+            $query->whereHas('student.computerStudents', function ($q) use ($request) {
+                $q->where('laboratory_id', $request->laboratory_id);
+            });
+        }
+
         // Search by student name or ID
         if ($request->has('search') && !empty($request->search)) {
             $search = $request->search;
@@ -78,7 +86,8 @@ class AttendanceController extends Controller
         $query = Attendance::with([
             'student.program',
             'student.year_level',
-            'student.section'
+            'student.section',
+            'student.computerStudents.laboratory'
         ]);
 
         // Apply the same filters as index
@@ -110,6 +119,13 @@ class AttendanceController extends Controller
         if ($request->has('section_id') && $request->section_id !== 'all') {
             $query->whereHas('student', function ($q) use ($request) {
                 $q->where('section_id', $request->section_id);
+            });
+        }
+
+        // Filter by laboratory (where student unlocked computers)
+        if ($request->has('laboratory_id') && $request->laboratory_id !== 'all') {
+            $query->whereHas('student.computerStudents', function ($q) use ($request) {
+                $q->where('laboratory_id', $request->laboratory_id);
             });
         }
 

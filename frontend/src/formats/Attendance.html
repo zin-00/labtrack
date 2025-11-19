@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Computer Laboratory Student Attendance and Usage Log Sheet</title>
+
+    <style>
+        /* ----- PRINT SETTINGS ----- */
+        @page {
+            size: legal portrait;
+            margin: 0.35in 0.4in; /* NARROW MARGINS */
+        }
+
+        @media print {
+            body {
+                margin: 0;
+                padding: 0;
+                background-color: white;
+            }
+            .page-wrapper {
+                box-shadow: none;
+                padding: 0.35in 0.4in;
+            }
+        }
+
+        /* ----- PAGE WRAPPER ----- */
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #f2f2f2;
+            display: flex;
+            justify-content: center;
+            font-family: "Times New Roman", serif;
+        }
+
+        .page-wrapper {
+            width: 8.5in;
+            min-height: 13in;
+            background-color: white;
+            padding: 0.35in 0.4in;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+        }
+
+        /* ----- HEADER ----- */
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            margin-bottom: 10px;
+        }
+
+        .logo {
+            width: 95px;
+            height: auto;
+        }
+
+        .header-text {
+            line-height: 1.15;
+        }
+
+        .school-name {
+            font-size: 17px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .underline {
+            border-bottom: 2px solid green;
+            width: 100%;
+            margin: 2px 0 4px 0;
+        }
+
+        .school-location {
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+
+        /* ----- TITLE ----- */
+        .title {
+            text-align: center;
+            font-size: 15px;
+            font-weight: bold;
+            text-transform: uppercase;
+            line-height: 1.25;
+            margin: 8px 0 12px 0;
+        }
+
+        /* ----- ROOM FIELD ----- */
+        .room-field {
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .room-field span {
+            display: inline-block;
+            min-width: 200px;
+            border-bottom: 1px solid black;
+            padding: 0 5px;
+        }
+
+        /* ----- TABLE ----- */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            border: 1px solid #000;
+            background: #f0f0f0;
+            padding: 6px;
+            font-size: 12.5px;
+            text-align: center;
+        }
+
+        td {
+            border: 1px solid #000;
+            padding: 6px;
+            font-size: 12.5px;
+            height: 22px;
+        }
+
+        .col-no { width: 6%; }
+        .col-name { width: 28%; }
+        .col-section { width: 15%; }
+        .col-datetime { width: 17%; }
+        .col-signature { width: 15%; }
+        .col-remarks { width: 19%; }
+    </style>
+</head>
+
+<body>
+    <div class="page-wrapper">
+
+        <!-- HEADER -->
+        <div class="header">
+            ${logoBase64 ? `<img src="${logoBase64}" class="logo" alt="School Logo">` : ""}
+            
+            <div class="header-text">
+                <div class="school-name">ST. FRANCIS XAVIER COLLEGE</div>
+                <div class="underline"></div>
+                <div class="school-location">SAN FRANCISCO • AGUSAN DEL SUR</div>
+            </div>
+        </div>
+
+        <!-- TITLE -->
+        <div class="title">
+            Computer Laboratory Student Attendance<br>
+            and Usage Log Sheet
+        </div>
+
+        <!-- ROOM FIELD -->
+        <div class="room-field">
+            Room: <span>${labName}</span>
+        </div>
+
+        <!-- TABLE -->
+        <table>
+            <thead>
+                <tr>
+                    <th class="col-no">No.</th>
+                    <th class="col-name">Name</th>
+                    <th class="col-section">Section and Year</th>
+                    <th class="col-datetime">Date and Time</th>
+                    <th class="col-signature">Signature</th>
+                    <th class="col-remarks">Remarks</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                ${rows.join("")}
+            </tbody>
+        </table>
+
+    </div>
+</body>
+</html>

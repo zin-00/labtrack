@@ -9,6 +9,7 @@ use App\Events\ComputerStatusUpdated;
 use App\Events\ComputerUnlockRequested;
 use App\Events\ComputerWentOffline;
 use App\Events\HeartbeatAck;
+use App\Events\MainEvent;
 use App\Events\SetOnlineEvent;
 use App\Events\Student\ScanEvent;
 use App\Http\Controllers\Controller;
@@ -322,6 +323,15 @@ class ComputerController extends Controller
         }
 
         $computer = Computer::findOrFail($id);
+
+        // Check if already unlocked
+        if (!$computer->is_lock) {
+            return response()->json([
+                'message' => 'Computer is already unlocked',
+                'computer' => $computer
+            ], 200);
+        }
+
         $computer->is_lock = false;
         $computer->save();
 
@@ -396,6 +406,7 @@ public function isOffline(Request $request, $ip)
         }
 
         broadcast(new ComputerEvent($computer, 'update'));
+        broadcast(new MainEvent('computer', 'status-update', $computer));
 
         return response()->json([
             "message" => "Computer is now offline",
@@ -465,6 +476,7 @@ public function isOffline(Request $request, $ip)
 
             // Also broadcast the generic update event if needed
             broadcast(new ComputerEvent($computer, 'update'));
+            broadcast(new MainEvent('computer', 'status-update', $computer));
 
             return response()->json([
                 "message" => "Computer is now online",
@@ -559,9 +571,28 @@ public function unlockAssignedComputer(Request $request){
         return response()->json(['message' => 'No computers assigned to this student'], 404);
     }
 
+    // Check if all computers are already unlocked
+    $lockedComputers = $computers->where('is_lock', true);
+    if($lockedComputers->count() === 0){
+        return response()->json([
+            'message' => 'All assigned computers are already unlocked',
+            'computers' => $computers->map(fn($c) => [
+                'id' => $c->id,
+                'computer_number' => $c->computer_number,
+                'ip_address' => $c->ip_address,
+                'is_lock' => $c->is_lock
+            ])
+        ], 200);
+    }
+
     $unlockedComputers = [];
 
     foreach ($computers as $computer) {
+        // Skip if already unlocked
+        if (!$computer->is_lock) {
+            continue;
+        }
+
         $computer->update(['is_lock' => false]);
 
         // Create computer log - make sure to include year_level
@@ -589,6 +620,7 @@ public function unlockAssignedComputer(Request $request){
         ];
     }
 
+    broadcast(new MainEvent('Attendance', 'created', $attendance));
     ScanEvent::dispatch($student);
     ComputerUnlockRequested::dispatch($computer,$request->input('rfid_uid'));
 
@@ -626,9 +658,28 @@ public function unlockComputersByLab(Request $request, $labId, $rfid_uid)
         ], 404);
     }
 
+    // Check if all computers are already unlocked
+    $lockedComputers = $computers->where('is_lock', true);
+    if ($lockedComputers->count() === 0) {
+        return response()->json([
+            'message' => 'All assigned computers in this laboratory are already unlocked',
+            'computers' => $computers->map(fn($c) => [
+                'id' => $c->id,
+                'computer_number' => $c->computer_number,
+                'ip_address' => $c->ip_address,
+                'is_lock' => $c->is_lock
+            ])
+        ], 200);
+    }
+
     $unlockedComputers = [];
 
     foreach ($computers as $computer) {
+        // Skip if already unlocked
+        if (!$computer->is_lock) {
+            continue;
+        }
+
         // Unlock the computer
         $computer->update(['is_lock' => false]);
 
@@ -649,8 +700,7 @@ public function unlockComputersByLab(Request $request, $labId, $rfid_uid)
                 'student_id'      => $student->id,
                 'attendance_date' => now()->toDateString(),
             ]);
-
-        // Dispatch unlock event for each computer
+        broadcast(new MainEvent('Attendance', 'created', $attendance));
         ComputerUnlockRequested::dispatch($computer, $rfid_uid);
 
         $unlockedComputers[] = [

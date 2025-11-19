@@ -36,7 +36,14 @@ watch([() => dateFilter.value.from, () => dateFilter.value.to], () => {
 });
 
 const fetchLogs = async (page = 1) => {
-    fetchComputerLogs(page);
+    await fetchComputerLogs(page);
+    // Debug: Log the first item to see what data we're receiving
+    if (computerLogs.value.data && computerLogs.value.data.length > 0) {
+        console.log('Sample log data:', computerLogs.value.data[0]);
+        console.log('Start time:', computerLogs.value.data[0].start_time);
+        console.log('End time:', computerLogs.value.data[0].end_time);
+        console.log('Uptime:', computerLogs.value.data[0].uptime);
+    }
 };
 
 const clearFilters = () => {
@@ -61,8 +68,9 @@ const exportToExcel = async () => {
             'Full Name': getFullName(log),
             'IP Address': log.ip_address || 'N/A',
             'MAC Address': log.mac_address || 'N/A',
-            'Event': log.event_type || 'N/A',
-            'Uptime': log.uptime || '—',
+            'Start Time': formatSessionTime(log.start_time),
+            'End Time': formatSessionTime(log.end_time),
+            'Uptime': formatUptime(log.uptime),
             'Date': formatDate(log.created_at),
             'Time': formatTime(log.created_at),
             'Timestamp': log.created_at
@@ -120,8 +128,9 @@ const generateIncidentReport = async () => {
             'Student ID': log.student?.student_id || '—',
             'Full Name': getFullName(log),
             'IP Address': log.ip_address || 'N/A',
-            'Event Type': log.event_type || 'N/A',
-            'Uptime': log.uptime || '—',
+            'Start Time': formatSessionTime(log.start_time),
+            'End Time': formatSessionTime(log.end_time),
+            'Uptime': formatUptime(log.uptime),
             'Date': formatDate(log.created_at),
             'Time': formatTime(log.created_at),
             'Timestamp': log.created_at
@@ -171,6 +180,57 @@ const formatTime = (dateString) => {
         minute: '2-digit',
         hour12: true
     });
+};
+
+const formatSessionTime = (dateString) => {
+    if (!dateString) return '—';
+    try {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return '—';
+        return date.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        });
+    } catch (e) {
+        console.error('Error formatting session time:', e, dateString);
+        return '—';
+    }
+};
+
+const formatUptime = (minutes) => {
+    if (minutes === null || minutes === undefined || minutes === 0) return '—';
+    
+    const mins = parseInt(minutes);
+    if (isNaN(mins)) return '—';
+    
+    if (mins < 60) {
+        return `${mins} min${mins !== 1 ? 's' : ''}`;
+    }
+    
+    const hours = Math.floor(mins / 60);
+    const remainingMinutes = mins % 60;
+    
+    if (hours < 24) {
+        let result = `${hours} hr${hours !== 1 ? 's' : ''}`;
+        if (remainingMinutes > 0) {
+            result += ` ${remainingMinutes} min${remainingMinutes !== 1 ? 's' : ''}`;
+        }
+        return result;
+    }
+    
+    const days = Math.floor(hours / 24);
+    const remainingHours = hours % 24;
+    
+    let result = `${days} day${days !== 1 ? 's' : ''}`;
+    if (remainingHours > 0) {
+        result += ` ${remainingHours} hr${remainingHours !== 1 ? 's' : ''}`;
+    }
+    if (remainingMinutes > 0) {
+        result += ` ${remainingMinutes} min${remainingMinutes !== 1 ? 's' : ''}`;
+    }
+    
+    return result;
 };
 
 const getEventBadge = (eventType) => {
@@ -256,7 +316,7 @@ onMounted(() => {
 
               <button
                 @click="generateIncidentReport"
-                class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-orange-600 hover:bg-orange-700 rounded-md transition-colors"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 border border-gray-300 rounded-md transition-colors"
               >
                 <ExclamationCircleIcon class="w-3.5 h-3.5" />
                 Incident Report
@@ -279,15 +339,16 @@ onMounted(() => {
             <template #header>
               <thead class="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th class="px-4 py-2.5 text-xs font-medium text-gray-600 text-left">Computer</th>
-                  <th class="px-4 py-2.5 text-xs font-medium text-gray-600 text-left hidden md:table-cell">Laboratory</th>
-                  <th class="px-4 py-2.5 text-xs font-medium text-gray-600 text-left">Student ID</th>
-                  <th class="px-4 py-2.5 text-xs font-medium text-gray-600 text-left hidden sm:table-cell">Full Name</th>
-                  <th class="px-4 py-2.5 text-xs font-medium text-gray-600 text-left hidden lg:table-cell">IP Address</th>
-                  <th class="px-4 py-2.5 text-xs font-medium text-gray-600 text-left hidden xl:table-cell">MAC Address</th>
-                  <th class="px-4 py-2.5 text-xs font-medium text-gray-600 text-left">Event</th>
-                  <th class="px-4 py-2.5 text-xs font-medium text-gray-600 text-left hidden lg:table-cell">Uptime</th>
-                  <th class="px-4 py-2.5 text-xs font-medium text-gray-600 text-left">Date & Time</th>
+                  <th class="px-3 py-2 text-[10px] font-medium text-gray-600 text-left">Computer</th>
+                  <th class="px-3 py-2 text-[10px] font-medium text-gray-600 text-left hidden md:table-cell">Laboratory</th>
+                  <th class="px-3 py-2 text-[10px] font-medium text-gray-600 text-left">Student ID</th>
+                  <th class="px-3 py-2 text-[10px] font-medium text-gray-600 text-left hidden sm:table-cell">Full Name</th>
+                  <th class="px-3 py-2 text-[10px] font-medium text-gray-600 text-left hidden lg:table-cell">IP Address</th>
+                  <th class="px-3 py-2 text-[10px] font-medium text-gray-600 text-left hidden xl:table-cell">MAC Address</th>
+                  <th class="px-3 py-2 text-[10px] font-medium text-gray-600 text-left">Start Time</th>
+                  <th class="px-3 py-2 text-[10px] font-medium text-gray-600 text-left">End Time</th>
+                  <th class="px-3 py-2 text-[10px] font-medium text-gray-600 text-left">Uptime</th>
+                  <th class="px-3 py-2 text-[10px] font-medium text-gray-600 text-left">Date & Time</th>
                 </tr>
               </thead>
             </template>
@@ -298,47 +359,55 @@ onMounted(() => {
                 :key="log.id"
                 class="hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
               >
-                <td class="px-4 py-3 text-xs text-gray-900">
-                  <span class="font-mono text-xs bg-gray-100 px-2 py-1 rounded border border-gray-200">
+                <td class="px-3 py-2 text-[10px] text-gray-900">
+                  <span class="font-mono text-[10px] bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">
                     PC-{{ log.computer?.computer_number || 'N/A' }}
                   </span>
                 </td>
-                <td class="px-4 py-3 text-xs text-gray-700 hidden md:table-cell">
-                  <span class="inline-flex items-center px-2 py-1 rounded-md text-xs bg-blue-50 text-blue-700 border border-blue-100">
+                <td class="px-3 py-2 text-[10px] text-gray-700 hidden md:table-cell">
+                  <span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] bg-gray-100 text-gray-700 border border-gray-200">
                     {{ log.computer?.laboratory?.name || 'N/A' }}
                   </span>
                 </td>
-                <td class="px-4 py-3 text-xs font-medium text-gray-900">
+                <td class="px-3 py-2 text-[10px] font-medium text-gray-900">
                   {{ log.student?.student_id || '—' }}
                 </td>
-                <td class="px-4 py-3 text-xs text-gray-900 hidden sm:table-cell">
+                <td class="px-3 py-2 text-[10px] text-gray-900 hidden sm:table-cell">
                   <div class="max-w-xs truncate">
                     {{ getFullName(log) }}
                   </div>
                 </td>
-                <td class="px-4 py-3 text-xs text-gray-700 hidden lg:table-cell">
-                  <code class="text-xs bg-gray-100 px-2 py-1 rounded border border-gray-200">
+                <td class="px-3 py-2 text-[10px] text-gray-700 hidden lg:table-cell">
+                  <code class="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">
                     {{ log.ip_address || 'N/A' }}
                   </code>
                 </td>
-                <td class="px-4 py-3 text-xs text-gray-700 hidden xl:table-cell">
-                  <code class="text-xs bg-gray-100 px-2 py-1 rounded border border-gray-200">
+                <td class="px-3 py-2 text-[10px] text-gray-700 hidden xl:table-cell">
+                  <code class="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">
                     {{ log.mac_address || 'N/A' }}
                   </code>
                 </td>
-                <td class="px-4 py-3 text-xs">
+                <td class="px-3 py-2 text-[10px]">
                   <span 
-                    :class="getEventBadge(log.event_type)"
-                    class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium border"
+                    class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-medium border bg-green-50 text-green-700 border-green-200"
                   >
-                    {{ log.event_type || 'N/A' }}
+                    {{ formatSessionTime(log.start_time) }}
                   </span>
                 </td>
-                <td class="px-4 py-3 text-xs text-gray-700 hidden lg:table-cell">
-                  {{ log.uptime || '—' }}
+                <td class="px-3 py-2 text-[10px]">
+                  <span 
+                    class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-medium border bg-red-50 text-red-700 border-red-200"
+                  >
+                    {{ formatSessionTime(log.end_time) }}
+                  </span>
                 </td>
-                <td class="px-4 py-3 text-xs text-gray-700">
-                  <div class="text-xs">
+                <td class="px-3 py-2 text-[10px]">
+                  <span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-medium border bg-blue-50 text-blue-700 border-blue-200">
+                    {{ formatUptime(log.uptime) }}
+                  </span>
+                </td>
+                <td class="px-3 py-2 text-[10px] text-gray-700">
+                  <div class="text-[10px]">
                     <div class="font-medium text-gray-900">{{ formatDate(log.created_at) }}</div>
                     <div class="text-gray-500">{{ formatTime(log.created_at) }}</div>
                   </div>

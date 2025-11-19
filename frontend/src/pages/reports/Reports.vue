@@ -359,7 +359,6 @@ const getIncidentReportHtml = (report) => {
             </tr>
             <tr>
                 <td class="version-cell">
-                    <div class="version-number">2</div>
                     <div class="seal-box">
                         <img src="${logoSrc}" alt="School Seal">
                     </div>

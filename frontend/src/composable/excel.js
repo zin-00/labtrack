@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import axios from 'axios';
 import * as XLSX from 'xlsx';  // Add this import
-import { useToast } from 'vue-toastification';
+import { useToast } from '../composable/toastification/useToast.js';
 import { useStudentStore } from './users/students/student';
 import { useApiUrl } from '../api/api';
 
@@ -68,7 +68,7 @@ const { api, getAuthHeader } = useApiUrl();
           }
           
           if (response.data.skipped_count > 0) {
-            toast.warning(`Skipped ${response.data.skipped_count} students due to errors`);
+            toast.warning('Warning',`Skipped ${response.data.skipped_count} students due to errors`);
             // Log errors to console for debugging
             console.error('Import errors:', response.data.errors);
           }

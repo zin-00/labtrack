@@ -2,11 +2,13 @@ import {defineStore} from "pinia";
 import { useStates } from "../states";
 import { useApiUrl } from "../../api/api";
 import axios from "axios";
+import { useToast } from "../toastification/useToast.js";
 
 import {ref, toRefs} from "vue";
 
 export const useComputerActivityStore = defineStore('computerActivity', () => {
     const {api, getAuthHeader} = useApiUrl();
+    const toast = useToast();
     const states = useStates();
     const {
         pagination,
@@ -33,10 +35,10 @@ export const useComputerActivityStore = defineStore('computerActivity', () => {
             console.log('Computer Activity data:', computerActivity.value);
             console.log('All Activity data:', allActivity.value);
             // console.log('Pagination data:', pagination.value);
-            success(response.data.message || 'Computer activity fetched successfully!');
+            toast.success('Success', response.data.message);
         } catch (err) {
             computerActivity.value = [];
-            error(err.response.data.message || 'Failed to fetch computer activity');
+            toast.error('Error', err.response.data.message);
             console.error('Error fetching computer activity:', err);
         }
     }

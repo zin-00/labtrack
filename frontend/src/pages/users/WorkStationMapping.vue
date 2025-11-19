@@ -483,7 +483,7 @@ const eventListener = () => {
     if (window.Echo) {
         window.Echo.channel('config-event')
             .listen('.config-event', (e) => {
-                console.log('📡 Received:', e);
+                console.log('Received:', e);
 
                 const { action, data } = e;
 
@@ -1074,7 +1074,7 @@ onMounted(async () => {
                                     </span>
                                 </div>
                                 <div v-if="bulkLabFilter" class="text-xs text-gray-500">
-                                    📍 Assigning to: <span class="font-medium">{{ bulkLabFilter.name }}</span>
+                                    Assigning to: <span class="font-medium">{{ bulkLabFilter.name }}</span>
                                 </div>
                             </div>
                             <div class="flex gap-2">
