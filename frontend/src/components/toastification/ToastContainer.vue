@@ -27,8 +27,8 @@ const removeToast = (id) => {
 }
 
 // Debug watch
-watch(() => props.toasts, (newToasts) => {
-  console.log('🔔 ToastContainer received toasts:', newToasts);
-  console.log('🔔 Number of toasts:', newToasts?.length || 0);
-}, { deep: true, immediate: true });
+// watch(() => props.toasts, (newToasts) => {
+//   console.log('🔔 ToastContainer received toasts:', newToasts);
+//   console.log('🔔 Number of toasts:', newToasts?.length || 0);
+// }, { deep: true, immediate: true });
 </script>

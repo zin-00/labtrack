@@ -247,34 +247,26 @@ const unlock_function = async () => {
     isSubmitting.value = false;
   }
 };
-const handleComputerEvent = ({ action, computer }) => {
-  const index = func.computers.value.findIndex(c => c.id === computer.id);
-
-  if (action === "update" && index !== -1) {
-    func.computers.value.splice(index, 1, { ...computer });
-  }
-
-  if (action === "add" && index === -1) {
-    func.computers.value.splice(computers.value.length, 0, { ...computer });
-  }
-
-  if (action === "delete" && index !== -1) {
-    func.computers.value.splice(index, 1);
-  }
-};
-
-
 const EventListener = () => {
  if (!window.Echo) {
     console.log('Echo is not available');
     return;
   }
 
-  window.Echo.channel('computers')
-    .listen('.ComputerEvent', (e) => {
-      console.log("📡 Computer update received:", e.computer);
-      applyFilters(); // Refresh with current filters
-      // handleComputerEvent(e);
+  window.Echo.channel('main-channel')
+    .listen('.MainEvent', (e) => {
+      if(e.type === 'Computer'){
+        const index = computers.value.findIndex(c => c.id === e.data.id);
+        // alert("Computer main event received:", e.data);
+        if (index !== -1) {
+          const updatedComputer = {
+            ...computers.value[index],
+            ...e.data
+          };
+
+          computers.value.splice(index, 1, updatedComputer);
+        }
+      }
     });
 }
 onMounted(async () => {

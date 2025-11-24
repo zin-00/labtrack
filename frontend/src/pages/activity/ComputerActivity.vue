@@ -65,9 +65,18 @@ const EventListener = async () => {
 
   window.Echo.channel('main-channel')
     .listen('MainEvent', (e) => {
-      if (e.model === 'computer_activity' && e.action === 'created') {
-        getComputerActivity();
-      }
+      if(e.type === 'logs'){
+        const index = allActivity.value.findIndex(a => a.id === e.data.id);
+        alert("Computer activity main event received:", e.data);
+        if (index === -1){
+          const updatedData = {
+            ...allActivity.value[index],
+            ...e.data
+          };
+          allActivity.value.splice(index, 1, updatedData);
+        
+          }
+        }
     });
 };
 

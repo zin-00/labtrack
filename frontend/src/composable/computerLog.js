@@ -11,6 +11,9 @@ export const useComputerLogStore = defineStore('computerLog', () => {
 
     const latestScan = ref([]);
     const selectedStatus = ref('all');
+    const programFilter = ref('');
+    const yearLevelFilter = ref('');
+    const sectionFilter = ref('');
     let echoChannel = null;
         
     const computerLogs = ref({
@@ -39,13 +42,24 @@ export const useComputerLogStore = defineStore('computerLog', () => {
                 params.to = dateFilter.value.to;
             }
 
-            const response = await axios.get(`${api}/logs`, {
+            if (programFilter.value) {
+                params.program_id = programFilter.value;
+            }
+
+            if (yearLevelFilter.value) {
+                params.year_level_id = yearLevelFilter.value;
+            }
+
+            if (sectionFilter.value) {
+                params.section_id = sectionFilter.value;
+            }
+
+            const response = await axios.get(`${api}/student-sessions`, {
                 ...getAuthHeader(),
                 params: params
             });
             
             computerLogs.value = response.data.computer_logs || [];
-            console.log(computerLogs.value);
             const message = response.data.message || 'Computer logs fetched successfully';
             toast.success('Success', message);
         } catch (error) {
@@ -70,6 +84,22 @@ export const useComputerLogStore = defineStore('computerLog', () => {
                 params.to = dateFilter.value.to;
             }
 
+            if (studentFilter.value) {
+                params.student_id = studentFilter.value;
+            }
+
+            if (programFilter.value) {
+                params.program_id = programFilter.value;
+            }
+
+            if (yearLevelFilter.value) {
+                params.year_level_id = yearLevelFilter.value;
+            }
+
+            if (sectionFilter.value) {
+                params.section_id = sectionFilter.value;
+            }
+
             const response = await axios.get(`${api}/logs/export`, {
                 ...getAuthHeader(),
                 params: params
@@ -87,12 +117,15 @@ export const useComputerLogStore = defineStore('computerLog', () => {
         dateFilter.value.from = '';
         dateFilter.value.to = '';
         selectedStatus.value = 'all';
-        fetchComputerLogs(1); // Refresh with cleared filters
+        programFilter.value = '';
+        yearLevelFilter.value = '';
+        sectionFilter.value = '';
+        fetchComputerLogs(1);
     };
 
     const fetchRecentScans = async () => {
     try{
-        const response = await axios.get(`${api}/logs`, getAuthHeader());
+        const response = await axios.get(`${api}/student-sessions`, getAuthHeader());
         latestScan.value = response.data.latestScans || [];
     }catch(err) {
         toast.error('Error', 'Failed to fetch recent scans');
@@ -108,6 +141,9 @@ export const useComputerLogStore = defineStore('computerLog', () => {
         dateFilter,
         latestScan,
         echoChannel,
+        programFilter,
+        yearLevelFilter,
+        sectionFilter,
     
 
         // Functions

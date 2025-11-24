@@ -191,8 +191,8 @@ const toggleAllComputers = (event) => {
     }
 };
 
-const loadUnassignedComputers = () => {
-    fetchNoLabComputers();
+const loadUnassignedComputers = async () => {
+    await fetchNoLabComputers();
     unassignedComputers.value = computers.value.filter(computer => !computer.laboratory_id);
 };
 
@@ -313,13 +313,13 @@ const loadAllComputers = async () => {
     }
 };
 
-onMounted(() => {
-    fetchLaboratories({
+onMounted( async () => {
+    await fetchLaboratories({
         search: searchQuery.value,
         status: statusFilter.value,
     });
-    loadAllComputers(); // Load all computers for status display
-    loadUnassignedComputers();
+    await loadAllComputers(); // Load all computers for status display
+    await loadUnassignedComputers();
 });
 </script>
 <template>

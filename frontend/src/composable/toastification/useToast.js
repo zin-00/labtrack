@@ -21,11 +21,8 @@ export function useToast() {
       duration
     };
     
-    console.log('Adding toast:', toast);
-    console.log('Current toasts before add:', toasts.value);
     toasts.value.push(toast);
-    console.log('Current toasts after add:', toasts.value);
-    console.log('Toasts array length:', toasts.value.length);
+
 
     // Auto-remove after duration
     if (duration > 0) {

@@ -6,6 +6,6 @@ use Illuminate\Support\Facades\Route;
 
 
 Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/logs', [ComputerLogController::class, 'index']);
+    Route::get('/student-sessions', [ComputerLogController::class, 'index']);
     Route::get('/logs/export', [ComputerLogController::class, 'export']);
 });

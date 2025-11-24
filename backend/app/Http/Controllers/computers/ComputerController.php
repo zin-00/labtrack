@@ -331,9 +331,22 @@ class ComputerController extends Controller
                 'computer' => $computer
             ], 200);
         }
+        if($computer->is_online === false){
+            return response()->json(['message' => 'Computer is offline. Cannot unlock.'], 400);
+        }
 
         $computer->is_lock = false;
         $computer->save();
+
+        $attendance =  Attendance::create([
+                    'student_id' => $student->id,
+                    'attendance_date' => Carbon::now()->toDateString(),
+                ]);
+        if(!$attendance){
+            return response()->json(['message' => 'Failed to create attendance record'], 500);
+        }
+
+        MainEvent::dispatch('Attendance', 'created', $attendance);
 
         $computer_log =  ComputerLog::create([
                 'student_id'   => $student->id,
@@ -448,7 +461,7 @@ public function isOffline(Request $request, $ip)
             ]);
 
             // Create activity log
-            ComputerActivityLog::create([
+            $logs = ComputerActivityLog::create([
                 'computer_id' => $computer->id,
                 'activity_type' => 'online',
                 'reason' => 'manual_online',
@@ -458,7 +471,7 @@ public function isOffline(Request $request, $ip)
             ]);
 
             // Also create a session start log if needed
-            ComputerActivityLog::create([
+            $logs = ComputerActivityLog::create([
                 'computer_id' => $computer->id,
                 'activity_type' => 'session_start',
                 'reason' => 'manual_online',
@@ -469,14 +482,8 @@ public function isOffline(Request $request, $ip)
 
             DB::commit();
 
-            // Broadcast using the new specific event
-            if ($wasOffline) {
-                broadcast(new ComputerCameOnline($computer, 'manual_online'));
-            }
-
-            // Also broadcast the generic update event if needed
-            broadcast(new ComputerEvent($computer, 'update'));
-            broadcast(new MainEvent('computer', 'status-update', $computer));
+            broadcast(new MainEvent('computer', 'update', $computer));
+            broadcast(new MainEvent('logs','create', $logs));
 
             return response()->json([
                 "message" => "Computer is now online",
@@ -567,6 +574,10 @@ public function unlockAssignedComputer(Request $request){
     // Use count() instead of empty() check for collections
     $computers = $student->computers()->get();
 
+    if($computers->is_online === false){
+        return response()->json(['message' => 'Computer is offline. Cannot unlock.'], 400);
+    }
+
     if($computers->count() === 0){
         return response()->json(['message' => 'No computers assigned to this student'], 404);
     }
@@ -621,6 +632,7 @@ public function unlockAssignedComputer(Request $request){
     }
 
     broadcast(new MainEvent('Attendance', 'created', $attendance));
+    broadcast(new MainEvent('RecentScan', 'created', $computerLog));
     ScanEvent::dispatch($student);
     ComputerUnlockRequested::dispatch($computer,$request->input('rfid_uid'));
 
@@ -656,6 +668,12 @@ public function unlockComputersByLab(Request $request, $labId, $rfid_uid)
         return response()->json([
             'message' => 'No computers assigned to this student in the selected laboratory'
         ], 404);
+    }
+
+    foreach ($computers as $computer) {
+        if ($computer->is_online === false) {
+            return response()->json(['message' => 'One or more computers are offline. Cannot unlock.'], 400);
+        }
     }
 
     // Check if all computers are already unlocked
@@ -701,6 +719,7 @@ public function unlockComputersByLab(Request $request, $labId, $rfid_uid)
                 'attendance_date' => now()->toDateString(),
             ]);
         broadcast(new MainEvent('Attendance', 'created', $attendance));
+        broadcast(new MainEvent('RecentScan', 'created', $computerLog));
         ComputerUnlockRequested::dispatch($computer, $rfid_uid);
 
         $unlockedComputers[] = [

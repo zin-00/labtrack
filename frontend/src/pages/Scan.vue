@@ -192,16 +192,38 @@ const EventListener = () => {
   if(window.Echo){
     let echoChannel = window.Echo.channel('main-channel');
     echoChannel.listen('.MainEvent', (e) => {
-      console.log('Event received:', e.message);
-      if(e.type === 'computer'){
-        fetchRecentScans();
-        // Update computer status in real-time
-        if(e.action === 'status-update' && e.data){
-          const index = computers.value.findIndex(c => c.id === e.data.id);
-          if(index !== -1){
-            computers.value[index] = { ...computers.value[index], ...e.data };
+      switch(e.type) {
+        case 'Computer':
+          alert('Received Computer event', e.data);
+          const computerIndex = computers.value.findIndex(c => c.id === e.data.id);
+          if(computerIndex !== -1){
+            computers.value[computerIndex] = {
+              ...computers.value[computerIndex],
+              ...e.data
+            };
+            computers.value.splice(computerIndex, 1, computers.value[computerIndex]); // Trigger reactivity update
+          }else{
+            computers.value.push(e.data);
           }
-        }
+          break;
+
+        case 'RecentScan':
+          alert('Received RecentScan event', e.data);
+          const scanIndex = latestScan.value.findIndex(c => c.id === e.data.id);
+          if(scanIndex !== -1){
+            latestScan.value[scanIndex] = {
+              ...latestScan.value[scanIndex],
+              ...e.data
+            };
+            latestScan.value.splice(scanIndex, 1, latestScan.value[scanIndex]); // Trigger reactivity update
+          }else{
+            latestScan.value.push(e.data);
+          }
+          break;
+
+        default:
+          // Handle unknown event types
+          console.warn('Unknown event type:', e.type);
       }
     })
   }

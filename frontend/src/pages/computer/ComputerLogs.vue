@@ -5,19 +5,33 @@ import Table from '../../components/table/Table.vue';
 import { useToast } from '../../composable/toastification/useToast';
 import * as XLSX from 'xlsx';
 import { useComputerLogStore } from '../../composable/computerLog';
+import { useStudentStore } from '../../composable/users/students/student';
+import { useProgramStore } from '../../composable/program';
+import { useYearLevelStore } from '../../composable/yearlevel';
+import { useSectionStore } from '../../composable/section';
 import { DocumentArrowDownIcon, ExclamationCircleIcon, FunnelIcon } from '@heroicons/vue/24/outline';
 import { storeToRefs } from 'pinia';
 import LoaderSpinner from '../../components/spinner/LoaderSpinner.vue';
+import { useStates } from '../../composable/states';
 
 const toast = useToast();
 const computerLogStore = useComputerLogStore();
+const studentStore = useStudentStore();
+const programStore = useProgramStore();
+const yearLevelStore = useYearLevelStore();
+const sectionStore = useSectionStore();
+const states = useStates();
 
+const { programs, secNotPaginated, yearLevelsNotPaginated } = toRefs(states);
 const {
     computerLogs,
     showFilters,
     dateFilter,
     isLoading,
-    selectedStatus
+    selectedStatus,
+    programFilter,
+    yearLevelFilter,
+    sectionFilter
 } = toRefs(computerLogStore);
 
 const {
@@ -26,24 +40,28 @@ const {
     clearFilters: clearStoreFilters
 } = computerLogStore;
 
+const { fetchStudents } = studentStore;
+const { fetchPrograms } = programStore;
+const { getYearLevels } = yearLevelStore;
+const { getSections } = sectionStore;
+
 const applyFilters = () => {
     fetchComputerLogs(1);
 };
 
-watch([() => dateFilter.value.from, () => dateFilter.value.to], () => {
+watch([
+    () => dateFilter.value.from, 
+    () => dateFilter.value.to,
+    () => programFilter.value,
+    () => yearLevelFilter.value,
+    () => sectionFilter.value
+], () => {
     clearTimeout(window.filterTimeout);
     window.filterTimeout = setTimeout(applyFilters, 500);
 });
 
 const fetchLogs = async (page = 1) => {
     await fetchComputerLogs(page);
-    // Debug: Log the first item to see what data we're receiving
-    if (computerLogs.value.data && computerLogs.value.data.length > 0) {
-        console.log('Sample log data:', computerLogs.value.data[0]);
-        console.log('Start time:', computerLogs.value.data[0].start_time);
-        console.log('End time:', computerLogs.value.data[0].end_time);
-        console.log('Uptime:', computerLogs.value.data[0].uptime);
-    }
 };
 
 const clearFilters = () => {
@@ -247,6 +265,12 @@ const getEventBadge = (eventType) => {
 
 onMounted(() => {
     fetchLogs();
+    fetchStudents(1, {});
+    fetchPrograms(1, {});
+    getYearLevels(1, {});
+    getSections(1, {});
+
+
 });
 </script>
 
@@ -296,6 +320,41 @@ onMounted(() => {
                   placeholder="To date"
                   class="px-3 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-200 focus:border-gray-400 bg-white transition"
                 />
+                
+
+                <!-- Program Filter -->
+                <select
+                  v-model="programFilter"
+                  class="px-3 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-200 focus:border-gray-400 bg-white transition"
+                >
+                  <option value="">All Programs</option>
+                  <option v-for="program in programs" :key="program.id" :value="program.id">
+                    {{ program.program_name }}
+                  </option>
+                </select>
+
+                <!-- Year Level Filter -->
+                <select
+                  v-model="yearLevelFilter"
+                  class="px-3 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-200 focus:border-gray-400 bg-white transition"
+                >
+                  <option value="">All Year Levels</option>
+                  <option v-for="yearLevel in yearLevelsNotPaginated" :key="yearLevel.id" :value="yearLevel.id">
+                    {{ yearLevel.year_level_name }}
+                  </option>
+                </select>
+
+                <!-- Section Filter -->
+                <select
+                  v-model="sectionFilter"
+                  class="px-3 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-200 focus:border-gray-400 bg-white transition"
+                >
+                  <option value="">All Sections</option>
+                  <option v-for="section in secNotPaginated" :key="section.id" :value="section.id">
+                    {{ section.section_name }}
+                  </option>
+                </select>
+                
                 <button
                   @click="clearFilters"
                   class="px-3 py-1.5 text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors"

@@ -33,11 +33,13 @@ import {
         } from '@kalimahapps/vue-icons';
 import { useAuthStore } from '../../composable/useAuth';
 import SideBar from '../../components/sidebar/SideBar.vue';
+import LoaderSpinner from '../../components/spinner/LoaderSpinner.vue'
 
 const auth = useAuthStore();
 const router = useRouter();
 const showingSettingsDropdown = ref(false);
 const isCheckingAuth = ref(false);
+const isLoading = ref(false);
 
 const sidebarState = ref(localStorage.getItem('sidebarState') || 'full');
 
@@ -97,6 +99,7 @@ const SideItems = ref([
 
 const logout_func = async () => {
   try {
+    isLoading.value = true;
     await auth.logout();
     localStorage.removeItem('sidebarState');
     localStorage.removeItem('auth_token');
@@ -104,6 +107,8 @@ const logout_func = async () => {
   } catch (error) {
     console.error('Logout error:', error);
     router.push('/login');
+  } finally {
+    isLoading.value = false;
   }
 };
 
@@ -173,6 +178,7 @@ onUnmounted(() => {
 <template>
     <div>
         <div class="min-h-screen bg-gray-100">
+          <LoaderSpinner :is-loading="isLoading" subMessage="Logging out please wait..." />
             <!-- Fixed Top Navigation -->
             <nav class="fixed top-0 left-0 right-0 z-50 border-b border-gray-200 bg-white">
                 <div class="mx-auto px-4 sm:px-6 lg:px-8">

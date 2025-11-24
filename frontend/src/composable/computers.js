@@ -154,10 +154,8 @@ const { api, getAuthHeader } = useApiUrl();
 
       toast.success('Success', response.data.message || 'Computer unlocked successfully!');
       console.log(response.data.message);
-      await fetchComputers();
-      return true;
     } catch(err) {
-      toast.error('Error', error.response?.data?.message || 'Failed to unlock computer.');
+      toast.error('Error', err.response?.data?.message || 'Failed to unlock computer.');
       console.error(err);
       return false;
     }

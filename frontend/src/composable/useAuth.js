@@ -1,9 +1,9 @@
 import { defineStore } from 'pinia'
 import { ref, reactive } from 'vue'
 import axios from 'axios'
-import { useToast } from 'vue-toastification'
 import router from '@/router'
 import { useApiUrl } from '../api/api'
+import { useToast } from '../composable/toastification/useToast.js';
 
 const { api, getAuthHeader } = useApiUrl()
 
@@ -115,7 +115,7 @@ const requestData = reactive({
       const data = response.data.user
       const token = response.data.token
       
-      toast.success(response.data.message || 'Login successful!')
+      toast.success('Success',response.data.message || 'Login successful!')
       
       if (data && token) {
         setUser(data)
@@ -124,7 +124,7 @@ const requestData = reactive({
       }
     } catch (error) {
       console.error('Login failed:', error)
-      toast.error('Login failed. Please check your credentials.')
+      toast.error('Error', 'Login failed. Please check your credentials.')
     } finally{
       processing.value = false
     }
@@ -147,7 +147,7 @@ const requestData = reactive({
       }
     } catch (error) {
       console.error('Registration failed:', error)
-      toast.error('Registration failed. Please try again.')
+      toast.error('Error', 'Registration failed. Please try again.')
     }
   }
 
@@ -167,13 +167,13 @@ const requestData = reactive({
 
     if (response.data.success) {
       isSuccess.value = true;
-      toast.success(response.data.message);
+      toast.success('Success', response.data.message);
     } else {
       errorMessage.value = response.data.message;
       if (response.data.errors) {
         // Handle field-specific errors
         for (const [field, errors] of Object.entries(response.data.errors)) {
-          toast.error(`${field}: ${errors.join(', ')}`);
+          toast.error('Error', `${field}: ${errors.join(', ')}`);
         }
       }
     }
@@ -191,7 +191,7 @@ const requestData = reactive({
     } else {
       errorMessage.value = 'Network error. Please check your connection.';
     }
-    toast.error(errorMessage.value);
+    toast.error('Error', errorMessage.value);
   } finally {
     isLoading.value = false;
   }
@@ -200,7 +200,10 @@ const requestData = reactive({
 
   const logout = async () => {
     try {
-      await axios.delete(`${api}/auth/logout`, getAuthHeader())
+      isLoading.value = true;
+      const response = await axios.delete(`${api}/auth/logout`, getAuthHeader())
+      toast.success('Success', response.data.message || 'Logged out successfully!')
+      clearForm()
       clearUser()
       clearToken()
       router.push({ name: 'login' })

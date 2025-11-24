@@ -9,6 +9,7 @@ import { useProgramStore } from '../../composable/program';
 import { useYearLevelStore } from '../../composable/yearlevel';
 import { useSectionStore } from '../../composable/section';
 import { useLaboratoryStore } from '../../composable/laboratory';
+import { useToast } from '../../composable/toastification/useToast.js';
 
 const pr = useProgramStore();
 const yl = useYearLevelStore();
@@ -17,17 +18,11 @@ const lab = useLaboratoryStore();
 const att = useAttendanceStore();
 const states = useStates();
 
+const toast = useToast();
+
 const currentPage = ref(1);
 const showFilters = ref(false);
 const selectedLaboratory = ref('all');
-
-onMounted(async () => {
-    await pr.fetchPrograms();
-    await yl.getYearLevels();
-    await sec.getSections();
-    await lab.fetchLaboratories();
-    await fetchAttendances();
-});
 
 const fetchAttendances = async () => {
     const filters = {
@@ -373,6 +368,28 @@ const goToPage = (page) => {
 
 const attendanceList = computed(() => att.attendances?.data || []);
 const pagination = computed(() => att.attendances?.meta || {});
+
+const EventListener = () => {
+ if (!window.Echo) {
+    console.log('Echo is not available');
+    return;
+  }
+
+  window.Echo.channel('main-channel')
+    .listen('.MainEvent', (e) => {
+      console.log("📡 Computer update received:", e.data);
+      fetchAttendances();
+    });
+}
+
+onMounted(async () => {
+    await pr.fetchPrograms();
+    await yl.getYearLevels();
+    await sec.getSections();
+    await lab.fetchLaboratories();
+    await fetchAttendances();
+    EventListener();
+});
 
 </script>
 <template>

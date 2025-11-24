@@ -1,6 +1,7 @@
 <?php
 
 use App\Events\ComputerWentOffline;
+use App\Events\MainEvent;
 use App\Models\Computer;
 use App\Models\ComputerActivityLog;
 use Illuminate\Support\Facades\Artisan;
@@ -15,7 +16,7 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::call(function () {
-    $offlineThreshold = now()->subMinutes(5);
+    $offlineThreshold = now()->subMinutes(1);
 
     $computersToMarkOffline = Computer::with('laboratory')
         ->where('is_online', true) // only online computers
@@ -32,7 +33,10 @@ Schedule::call(function () {
             DB::beginTransaction();
 
             $computer->update(['is_online' => false]);
+            $computer->update(['is_lock' => true]);
             $affected++;
+
+            broadcast(new MainEvent('Computer', 'updated', $computer));
 
             ComputerActivityLog::create([
                 'computer_id'   => $computer->id,
@@ -45,8 +49,8 @@ Schedule::call(function () {
                 'logged_at'     => now()
             ]);
 
-            broadcast(new ComputerWentOffline($computer, $computer->last_seen ? 'missed_heartbeats' : 'no_heartbeat'));
-
+            // broadcast(new ComputerWentOffline($computer, $computer->last_seen ? 'missed_heartbeats' : 'no_heartbeat'));
+            broadcast(new MainEvent('computer', 'offline', $computer));
             DB::commit();
 
             logger()->info("Computer marked offline: {$computer->ip_address}", [
@@ -65,8 +69,8 @@ Schedule::call(function () {
     }
 
     if ($affected > 0) {
-        logger()->info("✅ Marked {$affected} computers as offline");
+        logger()->info("Marked {$affected} computers as offline");
     } else {
-        logger()->info("ℹ️ No computers to mark offline this round");
+        logger()->info("ℹNo computers to mark offline this round");
     }
 })->everyMinute()->name('check-computer-status');
