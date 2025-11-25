@@ -34,13 +34,40 @@ const {
   latestLogs,
   topWebsites,
   weeklySessionHours,
+  laboratoryUsage,
   studentStats,
 } = toRefs(func);
+
+// Previous values for trend calculation
+const prevOnlineCount = ref(0);
+const prevOfflineCount = ref(0);
+const prevActiveCount = ref(0);
+const prevTotalCount = ref(0);
 
 // Toast helper
 function showError(error) {
   toast.error(`Failed to fetch data: ${error}`);
 }
+
+// Calculate percentage change
+const calculateChange = (current, previous) => {
+  if (previous === 0) return current > 0 ? '+100%' : '0%';
+  const change = ((current - previous) / previous) * 100;
+  const sign = change >= 0 ? '+' : '';
+  return `${sign}${change.toFixed(1)}%`;
+};
+
+// Computed properties for stat card changes
+const onlineChange = computed(() => calculateChange(onlineCount.value, prevOnlineCount.value));
+const offlineChange = computed(() => calculateChange(offlineCount.value, prevOfflineCount.value));
+const activeChange = computed(() => calculateChange(activeCount.value, prevActiveCount.value));
+const totalChange = computed(() => calculateChange(totalCount.value, prevTotalCount.value));
+
+// Computed properties for trends
+const onlineTrend = computed(() => onlineCount.value >= prevOnlineCount.value ? 'up' : 'down');
+const offlineTrend = computed(() => offlineCount.value <= prevOfflineCount.value ? 'up' : 'down');
+const activeTrend = computed(() => activeCount.value >= prevActiveCount.value ? 'up' : 'down');
+const totalTrend = computed(() => totalCount.value >= prevTotalCount.value ? 'up' : 'down');
 
 const loadDataDistribution = async () => {
   isLoading.value = true;
@@ -391,6 +418,105 @@ const studentStatusSeries = computed(() => [
   }
 ]);
 
+// Laboratory usage chart data
+const labUsageSeries = computed(() => [
+  {
+    name: selectedPeriod.value === 'month' ? 'Sessions (Year)' : 
+          selectedPeriod.value === 'week' ? 'Sessions (Week)' : 'Sessions (Today)',
+    data: laboratoryUsage.value.map(lab => lab.session_count || 0)
+  },
+  {
+    name: 'Online',
+    data: laboratoryUsage.value.map(lab => lab.online_count || 0)
+  },
+  {
+    name: 'Offline',
+    data: laboratoryUsage.value.map(lab => lab.offline_count || 0)
+  }
+]);
+
+// Dynamic grid columns based on number of laboratories
+const labGridCols = computed(() => {
+  const count = laboratoryUsage.value.length;
+  if (count <= 3) return 'grid-cols-3';
+  if (count === 4) return 'grid-cols-4';
+  if (count === 5) return 'grid-cols-5';
+  return 'grid-cols-6'; // 6+ labs
+});
+
+const labUsageCategories = computed(() => 
+  laboratoryUsage.value.map(lab => lab.lab_code || lab.lab_name)
+);
+
+const labUsageOptions = computed(() => ({
+  chart: {
+    type: 'bar',
+    toolbar: { show: false },
+    stacked: false
+  },
+  plotOptions: {
+    bar: {
+      horizontal: false,
+      columnWidth: laboratoryUsage.value.length <= 3 ? '60%' : 
+                   laboratoryUsage.value.length === 4 ? '55%' : '50%',
+      borderRadius: 4,
+      dataLabels: {
+        position: 'top'
+      }
+    }
+  },
+  colors: ['#3B82F6', '#10B981', '#EF4444'],
+  dataLabels: {
+    enabled: true,
+    offsetY: -20,
+    style: {
+      fontSize: '10px',
+      fontWeight: 600,
+      colors: ['#374151']
+    }
+  },
+  xaxis: {
+    categories: labUsageCategories.value,
+    labels: {
+      style: { colors: '#6B7280', fontSize: '11px', fontWeight: 500 },
+      rotate: -45,
+      rotateAlways: labUsageCategories.value.length > 5
+    }
+  },
+  yaxis: {
+    title: {
+      text: 'Count',
+      style: { color: '#6B7280', fontSize: '11px', fontWeight: 500 }
+    },
+    labels: {
+      style: { colors: '#6B7280', fontSize: '11px' }
+    }
+  },
+  grid: {
+    show: true,
+    borderColor: '#F3F4F6',
+    strokeDashArray: 3,
+    xaxis: { lines: { show: false } },
+    yaxis: { lines: { show: true } }
+  },
+  legend: {
+    position: 'top',
+    horizontalAlign: 'right',
+    fontSize: '12px',
+    fontWeight: 500,
+    markers: { width: 10, height: 10, radius: 2 }
+  },
+  tooltip: {
+    theme: 'light',
+    y: {
+      formatter: function(val, { seriesIndex }) {
+        if (seriesIndex === 0) return val + ' sessions';
+        return val + ' computers';
+      }
+    }
+  }
+}));
+
 const studentStatusOptions = computed(() => ({
   chart: {
     type: 'bar',
@@ -454,11 +580,85 @@ const studentStatusOptions = computed(() => ({
     }
   }
 }));
+const EventListener = () => {
+  if(!window.Echo) return;
+  
+  window.Echo.channel('main-channel')
+  .listen('.MainEvent', (e) => {
+    console.log('Dashboard received event:', e.type, e.data);
+    
+    switch(e.type) {
+      case 'Computer':
+      case 'computer':
+        // Update computer status counts
+        handleComputerStatusUpdate(e.data);
+        break;
+        
+      case 'Student':
+      case 'student':
+        fetchStatusDistribution();
+        break;
+        
+      case 'RecentScan':
+      case 'recent_scan':
+        // Update latest logs
+        if (e.data && !latestLogs.value.find(log => log.id === e.data.id)) {
+          latestLogs.value.unshift(e.data);
+          if (latestLogs.value.length > 10) {
+            latestLogs.value.pop();
+          }
+        }
+        break;
+        
+      case 'BrowserActivity':
+      case 'browser_activity':
+        loadDataDistribution();
+        break;
+        
+      default:
+        console.warn('Unknown event type:', e.type);
+    }
+  });
+};
+
+const handleComputerStatusUpdate = (computerData) => {
+  if (!computerData) return;
+  
+  // Store previous values before fetching new data
+  prevOnlineCount.value = onlineCount.value;
+  prevOfflineCount.value = offlineCount.value;
+  prevActiveCount.value = activeCount.value;
+  prevTotalCount.value = totalCount.value;
+  
+  fetchStatusDistribution();
+  
+  if (computerData.is_online !== undefined) {
+    const wasOnline = computerData.previous_online_status;
+    if (computerData.is_online && !wasOnline) {
+      onlineCount.value++;
+      if (offlineCount.value > 0) offlineCount.value--;
+    } else if (!computerData.is_online && wasOnline) {
+      offlineCount.value++;
+      if (onlineCount.value > 0) onlineCount.value--;
+    }
+  }
+};
+
+// Update previous values after initial data fetch
+const updatePreviousValues = () => {
+  prevOnlineCount.value = onlineCount.value;
+  prevOfflineCount.value = offlineCount.value;
+  prevActiveCount.value = activeCount.value;
+  prevTotalCount.value = totalCount.value;
+};
 
 onMounted(async () => {
   try {
     await fetchStatusDistribution();
     await loadDataDistribution();
+    // Store initial values as previous for first render
+    updatePreviousValues();
+    EventListener();
   } catch (error) {
     console.error('Error loading data:', error);
     showError(error.message || 'Unknown error');
@@ -494,26 +694,26 @@ onMounted(async () => {
           <StatCard 
             title="Online Nodes" 
             :value="onlineCount" 
-            change="+1.26%"
-            :trend="'up'"
+            :change="onlineChange"
+            :trend="onlineTrend"
           />
           <StatCard 
             title="Offline Nodes" 
             :value="offlineCount" 
-            change="-1.56%"
-            :trend="'down'"
+            :change="offlineChange"
+            :trend="offlineTrend"
           />
           <StatCard 
             title="Active Sessions" 
             :value="activeCount" 
-            change="+3.26%"
-            :trend="'up'"
+            :change="activeChange"
+            :trend="activeTrend"
           />
           <StatCard 
             title="Total Units" 
             :value="totalCount" 
-            change="+3.25%"
-            :trend="'up'"
+            :change="totalChange"
+            :trend="totalTrend"
           />
         </div>
 
@@ -581,117 +781,44 @@ onMounted(async () => {
           </div>
         </div>
 
-        <!-- Bottom Row - Bar Chart and Stats -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <!-- Weekly Session Hours - Takes 2 columns -->
-          <div class="lg:col-span-2 bg-white p-5 rounded-xl shadow-sm border border-gray-100">
-            <div class="flex items-center justify-between mb-4">
-              <div>
-                <h3 class="text-base font-semibold text-gray-900">Weekly Session Hours</h3>
-                <p class="text-xs text-gray-500 mt-0.5">Lab usage overview</p>
-              </div>
-              <div class="text-right">
-                <div class="text-xl font-bold text-gray-900">{{ totalWeeklyHours }}<span class="text-sm text-gray-500">h</span></div>
-                <div class="flex items-center justify-end gap-1 mt-0.5">
-                  <TrendingUpIcon class="w-3 h-3 text-green-600" />
-                  <span class="text-xs font-medium text-green-600">{{ weeklyGrowth }}</span>
-                </div>
-              </div>
+        <!-- Bottom Row - Laboratory Usage (Full Width) -->
+        <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="text-base font-semibold text-gray-900">Laboratory Usage Statistics</h3>
+              <p class="text-xs text-gray-500 mt-0.5">
+                Sessions, online and offline computers per laboratory
+                <span v-if="selectedPeriod === 'month'">(This Year)</span>
+                <span v-else-if="selectedPeriod === 'week'">(Last 7 Days)</span>
+                <span v-else-if="selectedPeriod === 'day'">(Today)</span>
+              </p>
             </div>
-
-            <apexchart
-              height="200"
-              type="bar"
-              :options="barChartOptions"
-              :series="barChartSeries"
-            />
-            
-            <div class="mt-4 pt-3 border-t border-gray-100 grid grid-cols-3 gap-4 text-center">
-              <div>
-                <div class="text-xs text-gray-500">Peak Day</div>
-                <div class="text-sm font-semibold text-gray-900 mt-0.5">{{ peakDay }}</div>
-              </div>
-              <div>
-                <div class="text-xs text-gray-500">Avg/Day</div>
-                <div class="text-sm font-semibold text-gray-900 mt-0.5">{{ (totalWeeklyHours / 7).toFixed(1) }}h</div>
-              </div>
-              <div>
-                <div class="text-xs text-gray-500">Avg Session</div>
-                <div class="text-sm font-semibold text-gray-900 mt-0.5">{{ averageSessionDuration }}h</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Quick Stats Summary -->
-          <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
-            <div class="mb-4">
-              <h3 class="text-base font-semibold text-gray-900">Quick Stats</h3>
-              <p class="text-xs text-gray-500 mt-0.5">System overview</p>
-            </div>
-            
-            <div class="space-y-3">
-              <div class="p-3 rounded-lg bg-green-50 border border-green-100">
-                <div class="flex items-center justify-between">
-                  <div>
-                    <div class="text-xs text-gray-600 font-medium">Active Nodes</div>
-                    <div class="text-2xl font-bold text-green-600 mt-1">{{ activeCount }}</div>
-                  </div>
-                  <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                    <ActivityIcon class="w-6 h-6 text-green-600" />
-                  </div>
-                </div>
-              </div>
-
-              <div class="p-3 rounded-lg bg-red-50 border border-red-100">
-                <div class="flex items-center justify-between">
-                  <div>
-                    <div class="text-xs text-gray-600 font-medium">Inactive Nodes</div>
-                    <div class="text-2xl font-bold text-red-600 mt-1">{{ inactiveCount }}</div>
-                  </div>
-                  <div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
-                    <MonitorIcon class="w-6 h-6 text-red-600" />
-                  </div>
-                </div>
-              </div>
-
-              <div class="p-3 rounded-lg bg-amber-50 border border-amber-100">
-                <div class="flex items-center justify-between">
-                  <div>
-                    <div class="text-xs text-gray-600 font-medium">Maintenance</div>
-                    <div class="text-2xl font-bold text-amber-600 mt-1">{{ maintenanceCount }}</div>
-                  </div>
-                  <div class="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center">
-                    <ClockIcon class="w-6 h-6 text-amber-600" />
-                  </div>
-                </div>
-              </div>
-
-              <div class="p-3 rounded-lg bg-gray-100 border border-gray-200">
-                <div class="flex items-center justify-between">
-                  <div>
-                    <div class="text-xs text-gray-600 font-medium">Total Units</div>
-                    <div class="text-2xl font-bold text-gray-900 mt-1">{{ totalCount }}</div>
-                  </div>
-                  <div class="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
-                    <UsersIcon class="w-6 h-6 text-gray-700" />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Student Status Distribution -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <!-- Horizontal Bar Chart - Takes 2 columns -->
-          <div class="lg:col-span-2 bg-white p-5 rounded-xl shadow-sm border border-gray-100">
-            <div class="flex items-center justify-between mb-4">
-              <div>
-                <h3 class="text-base font-semibold text-gray-900">Student Status Distribution</h3>
-                <p class="text-xs text-gray-500 mt-0.5">Registered student breakdown</p>
+            <div class="flex items-center gap-3">
+              <div class="flex gap-1.5">
+                <button 
+                  @click="setPeriod('month')"
+                  :class="selectedPeriod === 'month' ? 'bg-gray-200 text-gray-800' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'"
+                  class="px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors"
+                >
+                  Month
+                </button>
+                <button 
+                  @click="setPeriod('week')"
+                  :class="selectedPeriod === 'week' ? 'bg-gray-200 text-gray-800' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'"
+                  class="px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors"
+                >
+                  Week
+                </button>
+                <button 
+                  @click="setPeriod('day')"
+                  :class="selectedPeriod === 'day' ? 'bg-gray-200 text-gray-800' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'"
+                  class="px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors"
+                >
+                  Day
+                </button>
               </div>
               <router-link 
-                to="/students"
+                to="/laboratory"
                 class="text-xs bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg font-medium hover:bg-gray-200 transition-colors inline-flex items-center gap-1"
               >
                 <span>View All</span>
@@ -700,378 +827,187 @@ onMounted(async () => {
                 </svg>
               </router-link>
             </div>
+          </div>
 
+          <div v-if="!isLoading && laboratoryUsage.length > 0">
             <apexchart
-              height="200"
+              height="350"
               type="bar"
-              :options="studentStatusOptions"
-              :series="studentStatusSeries"
+              :options="labUsageOptions"
+              :series="labUsageSeries"
             />
 
-            <div class="mt-4 pt-3 border-t border-gray-100 grid grid-cols-3 gap-4 text-center">
-              <div>
-                <div class="text-xs text-gray-500">Active Rate</div>
-                <div class="text-sm font-semibold text-green-600 mt-0.5">
-                  {{ studentStats.total > 0 ? ((studentStats.active / studentStats.total) * 100).toFixed(1) : 0 }}%
-                </div>
-              </div>
-              <div>
-                <div class="text-xs text-gray-500">Total Students</div>
-                <div class="text-sm font-semibold text-gray-900 mt-0.5">{{ studentStats.total }}</div>
-              </div>
-              <div>
-                <div class="text-xs text-gray-500">Restricted</div>
-                <div class="text-sm font-semibold text-amber-600 mt-0.5">{{ studentStats.restricted }}</div>
+            <!-- Laboratory Names - Dynamic Column Layout -->
+            <div class="mt-6 grid gap-4" :class="labGridCols">
+              <div 
+                v-for="lab in laboratoryUsage" 
+                :key="lab.lab_code"
+                class="text-center p-3 rounded-lg bg-gray-50 border border-gray-200"
+              >
+                <h4 class="text-sm font-semibold text-gray-900">{{ lab.lab_name }}</h4>
+                <p class="text-xs text-gray-500 mt-1">{{ lab.lab_code }}</p>
               </div>
             </div>
           </div>
 
-          <!-- Student Stats Cards -->
-          <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
-            <div class="mb-4">
-              <h3 class="text-base font-semibold text-gray-900">Student Overview</h3>
-              <p class="text-xs text-gray-500 mt-0.5">Registration status</p>
+          <div v-else class="py-12 text-center">
+            <div class="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+              <svg class="w-7 h-7 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
             </div>
-            
-            <div class="space-y-3">
-              <div class="p-3 rounded-lg bg-green-50 border border-green-100">
-                <div class="flex items-center justify-between">
-                  <div class="flex-1">
-                    <div class="text-xs text-gray-600 font-medium mb-1">Active Students</div>
-                    <div class="text-2xl font-bold text-green-600">{{ studentStats.active }}</div>
-                    <div class="mt-2 bg-green-200 rounded-full h-2 overflow-hidden">
-                      <div 
-                        class="bg-green-600 h-full rounded-full transition-all duration-500"
-                        :style="{ width: studentStats.total > 0 ? (studentStats.active / studentStats.total * 100) + '%' : '0%' }"
-                      ></div>
-                    </div>
-                  </div>
-                  <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center ml-3">
-                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
-              <div class="p-3 rounded-lg bg-red-50 border border-red-100">
-                <div class="flex items-center justify-between">
-                  <div class="flex-1">
-                    <div class="text-xs text-gray-600 font-medium mb-1">Inactive Students</div>
-                    <div class="text-2xl font-bold text-red-600">{{ studentStats.inactive }}</div>
-                    <div class="mt-2 bg-red-200 rounded-full h-2 overflow-hidden">
-                      <div 
-                        class="bg-red-600 h-full rounded-full transition-all duration-500"
-                        :style="{ width: studentStats.total > 0 ? (studentStats.inactive / studentStats.total * 100) + '%' : '0%' }"
-                      ></div>
-                    </div>
-                  </div>
-                  <div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center ml-3">
-                    <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
-              <div class="p-3 rounded-lg bg-amber-50 border border-amber-100">
-                <div class="flex items-center justify-between">
-                  <div class="flex-1">
-                    <div class="text-xs text-gray-600 font-medium mb-1">Restricted Students</div>
-                    <div class="text-2xl font-bold text-amber-600">{{ studentStats.restricted }}</div>
-                    <div class="mt-2 bg-amber-200 rounded-full h-2 overflow-hidden">
-                      <div 
-                        class="bg-amber-600 h-full rounded-full transition-all duration-500"
-                        :style="{ width: studentStats.total > 0 ? (studentStats.restricted / studentStats.total * 100) + '%' : '0%' }"
-                      ></div>
-                    </div>
-                  </div>
-                  <div class="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center ml-3">
-                    <svg class="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                    </svg>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <p class="text-sm font-medium text-gray-900">No laboratory data available</p>
+            <p class="text-xs text-gray-500 mt-0.5">Laboratory statistics will appear here</p>
           </div>
         </div>
 
-        <!-- Top 3 Most Visited Websites -->
-        <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
-          <div class="flex items-center justify-between mb-4">
+        <!-- Top 3 Most Visited Websites - Redesigned -->
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+          <div class="flex items-center justify-between mb-6">
             <div>
-              <h3 class="text-base font-semibold text-gray-900">Top 3 Most Visited Websites</h3>
-              <p class="text-xs text-gray-500 mt-0.5">Most accessed sites in the lab</p>
+              <h3 class="text-lg font-bold text-gray-900">Top Visited Websites</h3>
+              <p class="text-xs text-gray-500 mt-1">Most accessed sites across all laboratories</p>
             </div>
             <router-link 
               to="/browser_activity"
               class="text-xs bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg font-medium hover:bg-gray-200 transition-colors inline-flex items-center gap-1"
             >
               <span>View All</span>
-              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
               </svg>
             </router-link>
           </div>
 
-          <!-- Desktop View -->
-          <div class="hidden md:block overflow-x-auto">
-            <table class="w-full">
-              <thead class="bg-gray-50">
-                <tr>
-                  <th class="px-4 py-2.5 text-xs font-semibold text-gray-700 text-left uppercase tracking-wider w-16">Rank</th>
-                  <th class="px-4 py-2.5 text-xs font-semibold text-gray-700 text-left uppercase tracking-wider">Website</th>
-                  <th class="px-4 py-2.5 text-xs font-semibold text-gray-700 text-left uppercase tracking-wider">URL</th>
-                  <th class="px-4 py-2.5 text-xs font-semibold text-gray-700 text-right uppercase tracking-wider w-32">Visits</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr 
-                  v-for="(website, index) in topWebsites" 
-                  :key="website.url"
-                  class="hover:bg-gray-50 transition-colors border-b border-gray-100"
-                >
-                  <td class="px-4 py-3">
-                    <div class="flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm"
-                         :class="index === 0 ? 'bg-yellow-100 text-yellow-700' : 
-                                 index === 1 ? 'bg-gray-100 text-gray-700' : 
-                                 'bg-orange-100 text-orange-700'">
-                      {{ index + 1 }}
-                    </div>
-                  </td>
-                  <td class="px-4 py-3">
-                    <p class="text-sm font-medium text-gray-900 truncate max-w-xs" :title="website.title">
-                      {{ website.title || 'Untitled' }}
-                    </p>
-                  </td>
-                  <td class="px-4 py-3">
-                    <a 
-                      :href="website.url" 
-                      target="_blank"
-                      class="text-sm text-blue-600 hover:text-blue-800 hover:underline truncate block max-w-md"
-                      :title="website.url"
-                    >
-                      {{ website.url }}
-                    </a>
-                  </td>
-                  <td class="px-4 py-3 text-right">
-                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold"
-                          :class="index === 0 ? 'bg-yellow-100 text-yellow-700' : 
-                                  index === 1 ? 'bg-gray-100 text-gray-700' : 
-                                  'bg-orange-100 text-orange-700'">
-                      <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/>
-                        <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"/>
-                      </svg>
-                      {{ website.visit_count }}
-                    </span>
-                  </td>
-                </tr>
-                
-                <!-- Empty State -->
-                <tr v-if="!topWebsites || topWebsites.length === 0">
-                  <td colspan="4" class="px-4 py-10 text-center">
-                    <div class="flex flex-col items-center gap-2">
-                      <div class="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center">
-                        <svg class="w-7 h-7 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
-                        </svg>
-                      </div>
-                      <div>
-                        <p class="text-sm font-medium text-gray-900">No website data available</p>
-                        <p class="text-xs text-gray-500 mt-0.5">Browser activity will appear here</p>
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <!-- Mobile View -->
-          <div class="md:hidden space-y-3">
+          <!-- Clean Minimal Cards -->
+          <div v-if="topWebsites && topWebsites.length > 0" class="space-y-3">
             <div
               v-for="(website, index) in topWebsites"
               :key="website.url"
-              class="p-4 rounded-lg border"
-              :class="index === 0 ? 'bg-yellow-50 border-yellow-200' : 
-                      index === 1 ? 'bg-gray-50 border-gray-200' : 
-                      'bg-orange-50 border-orange-200'"
+              class="p-4 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors border border-gray-200"
             >
-              <div class="flex items-start justify-between mb-2">
-                <div class="flex items-center gap-3">
-                  <div class="flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm"
-                       :class="index === 0 ? 'bg-yellow-100 text-yellow-700' : 
-                               index === 1 ? 'bg-gray-100 text-gray-700' : 
-                               'bg-orange-100 text-orange-700'">
-                    {{ index + 1 }}
-                  </div>
-                  <div>
-                    <p class="text-sm font-semibold text-gray-900">{{ website.title || 'Untitled' }}</p>
+              <div class="flex items-start gap-4">
+                <!-- Rank Number -->
+                <div class="flex-shrink-0">
+                  <div class="w-10 h-10 rounded-lg bg-white border border-gray-300 flex items-center justify-center">
+                    <span class="text-lg font-bold text-gray-700">{{ index + 1 }}</span>
                   </div>
                 </div>
-                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold"
-                      :class="index === 0 ? 'bg-yellow-100 text-yellow-700' : 
-                              index === 1 ? 'bg-gray-100 text-gray-700' : 
-                              'bg-orange-100 text-orange-700'">
-                  <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/>
-                    <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"/>
-                  </svg>
-                  {{ website.visit_count }}
-                </span>
-              </div>
-              <a 
-                :href="website.url" 
-                target="_blank"
-                class="text-xs text-blue-600 hover:text-blue-800 hover:underline break-all"
-              >
-                {{ website.url }}
-              </a>
-            </div>
 
-            <!-- Empty State Mobile -->
-            <div v-if="!topWebsites || topWebsites.length === 0" class="text-center py-8">
-              <div class="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                <svg class="w-7 h-7 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
-                </svg>
+                <!-- Content -->
+                <div class="flex-1 min-w-0">
+                  <!-- Website Title -->
+                  <h4 class="text-sm font-semibold text-gray-900 mb-1 truncate" :title="website.title">
+                    {{ website.title || 'Untitled Page' }}
+                  </h4>
+
+                  <!-- Website URL -->
+                  <a 
+                    :href="website.url" 
+                    target="_blank"
+                    class="text-xs text-gray-600 hover:text-gray-900 hover:underline block mb-2 truncate"
+                    :title="website.url"
+                  >
+                    {{ website.url }}
+                  </a>
+
+                  <!-- Visit Count Bar -->
+                  <div class="flex items-center gap-3">
+                    <div class="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                      <div 
+                        class="h-full bg-gray-400 rounded-full transition-all duration-500"
+                        :style="{ width: topWebsites.length > 0 ? (website.visit_count / topWebsites[0].visit_count * 100) + '%' : '0%' }"
+                      ></div>
+                    </div>
+                    <span class="text-sm font-semibold text-gray-700 min-w-[3rem] text-right">
+                      {{ website.visit_count }}
+                    </span>
+                  </div>
+                </div>
               </div>
-              <p class="text-sm font-medium text-gray-900">No website data available</p>
-              <p class="text-xs text-gray-500 mt-0.5">Browser activity will appear here</p>
             </div>
+          </div>
+
+          <!-- Empty State -->
+          <div v-else class="py-12 text-center">
+            <div class="w-14 h-14 bg-gray-100 rounded-xl flex items-center justify-center mx-auto mb-3">
+              <svg class="w-7 h-7 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
+              </svg>
+            </div>
+            <p class="text-sm font-medium text-gray-900">No Website Activity</p>
+            <p class="text-xs text-gray-500 mt-1">Data will appear here</p>
           </div>
         </div>
 
         <!-- Latest Logs Table - Full Width -->
-        <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
-          <div class="flex items-center justify-between mb-4">
+        <!-- Recent Activity - Minimalist -->
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+          <div class="flex items-center justify-between mb-6">
             <div>
               <h3 class="text-base font-semibold text-gray-900">Recent Activity</h3>
-              <p class="text-xs text-gray-500 mt-0.5">Latest system access logs</p>
+              <p class="text-xs text-gray-500 mt-1">Latest system access logs</p>
             </div>
             <router-link 
               to="/computer_logs"
-              class="text-xs bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg font-medium hover:bg-gray-200 transition-colors inline-flex items-center gap-1"
+              class="text-xs text-gray-600 hover:text-gray-900 font-medium transition-colors inline-flex items-center gap-1"
             >
               <span>View All</span>
-              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
               </svg>
             </router-link>
           </div>
 
-          <div class="overflow-x-auto">
-              <Table>
-                <template #header>
-                  <thead class="bg-gray-50">
-                    <tr>
-                      <th class="px-4 py-2.5 text-xs font-semibold text-gray-700 text-left uppercase tracking-wider">
-                        Student
-                      </th>
-                      <th class="px-4 py-2.5 text-xs font-semibold text-gray-700 text-left uppercase tracking-wider hidden lg:table-cell">
-                        Laboratory
-                      </th>
-                      <th class="px-4 py-2.5 text-xs font-semibold text-gray-700 text-left uppercase tracking-wider hidden md:table-cell">
-                        Workstation
-                      </th>
-                      <th class="px-4 py-2.5 text-xs font-semibold text-gray-700 text-left uppercase tracking-wider hidden xl:table-cell">
-                        IP Address
-                      </th>
-                      <th class="px-4 py-2.5 text-xs font-semibold text-gray-700 text-left uppercase tracking-wider">
-                        Time
-                      </th>
-                      <th class="px-4 py-2.5 text-xs font-semibold text-gray-700 text-left uppercase tracking-wider hidden sm:table-cell">
-                        Status
-                      </th>
-                    </tr>
-                  </thead>
-                </template>
-                
-                <template #default>
-                  <tr 
-                    v-for="log in latestLogs" 
-                    :key="log.id"
-                    class="hover:bg-gray-50 transition-colors border-b border-gray-100"
-                  >
-                    <td class="px-4 py-3">
-                      <div class="flex items-center gap-2.5">
-                        <div class="w-8 h-8 bg-gradient-to-br from-gray-500 to-gray-600 rounded-full flex items-center justify-center flex-shrink-0">
-                          <span class="text-white text-xs font-semibold">
-                            {{ log.student?.first_name?.charAt(0) || 'N' }}{{ log.student?.last_name?.charAt(0) || 'A' }}
-                          </span>
-                        </div>
-                        <div class="min-w-0">
-                          <p class="text-sm font-medium text-gray-900 truncate">
-                            {{ getFullName(log) }}
-                          </p>
-                          <p class="text-xs text-gray-500 truncate">
-                            ID: {{ log.student?.student_id || '—' }}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
-                    <td class="px-4 py-3 hidden lg:table-cell">
-                      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
-                        <MonitorIcon class="w-3 h-3" />
-                        {{ log.computer?.laboratory?.name || 'N/A' }}
-                      </span>
-                    </td>
-                    <td class="px-4 py-3 hidden md:table-cell">
-                      <span class="inline-flex items-center gap-1 font-mono text-xs bg-gray-100 text-gray-700 px-2.5 py-1 rounded-md">
-                        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                          <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/>
-                        </svg>
-                        PC-{{ log.computer?.computer_number || 'N/A' }}
-                      </span>
-                    </td>
-                    <td class="px-4 py-3 hidden xl:table-cell">
-                      <code class="text-xs bg-gray-100 text-gray-700 px-2.5 py-1 rounded-md font-mono">
-                        {{ log.ip_address || '—' }}
-                      </code>
-                    </td>
-                    <td class="px-4 py-3">
-                      <div class="flex items-center gap-2">
-                        <ClockIcon class="w-3.5 h-3.5 text-gray-400" />
-                        <div>
-                          <div class="text-xs font-medium text-gray-900">
-                            {{ getTimeAgo(log.created_at) }}
-                          </div>
-                          <div class="text-xs text-gray-500">
-                            {{ formatTime(log.created_at) }}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td class="px-4 py-3 hidden sm:table-cell">
-                      <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
-                        Active
-                      </span>
-                    </td>
-                  </tr>
-                  
-                  <!-- Empty State -->
-                  <tr v-if="!latestLogs || latestLogs.length === 0">
-                    <td colspan="6" class="px-4 py-10 text-center">
-                      <div class="flex flex-col items-center gap-2">
-                        <div class="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center">
-                          <svg class="w-7 h-7 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                          </svg>
-                        </div>
-                        <div>
-                          <p class="text-sm font-medium text-gray-900">No activity found</p>
-                          <p class="text-xs text-gray-500 mt-0.5">Recent system logs will appear here</p>
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                </template>
-              </Table>
+          <!-- Clean Activity List -->
+          <div v-if="latestLogs && latestLogs.length > 0" class="space-y-2">
+            <div
+              v-for="log in latestLogs?.slice(0, 8) || []"
+              :key="log.id"
+              class="flex items-center gap-4 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors border border-gray-200"
+            >
+              <!-- Avatar -->
+              <div class="flex-shrink-0">
+                <div class="w-10 h-10 bg-white border border-gray-300 rounded-lg flex items-center justify-center">
+                  <span class="text-xs font-semibold text-gray-700">
+                    {{ getFullName(log).split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Content -->
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between mb-1">
+                  <h4 class="text-sm font-medium text-gray-900 truncate">{{ getFullName(log) }}</h4>
+                  <span class="text-xs text-gray-500 ml-2">{{ getTimeAgo(log.created_at) }}</span>
+                </div>
+                <div class="flex items-center gap-2 text-xs text-gray-600">
+                  <span>PC-{{ log.computer?.computer_number || 'N/A' }}</span>
+                  <span class="text-gray-400">•</span>
+                  <span>{{ log.computer?.laboratory?.name || 'N/A' }}</span>
+                  <span v-if="log.ip_address" class="text-gray-400">•</span>
+                  <span v-if="log.ip_address" class="font-mono">{{ log.ip_address }}</span>
+                </div>
+              </div>
+
+              <!-- Status Indicator -->
+              <div class="flex-shrink-0">
+                <div class="w-2 h-2 bg-gray-400 rounded-full"></div>
+              </div>
             </div>
           </div>
+
+          <!-- Empty State -->
+          <div v-else class="py-12 text-center">
+            <div class="w-14 h-14 bg-gray-100 rounded-xl flex items-center justify-center mx-auto mb-3">
+              <svg class="w-7 h-7 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+              </svg>
+            </div>
+            <p class="text-sm font-medium text-gray-900">No Recent Activity</p>
+            <p class="text-xs text-gray-500 mt-1">Logs will appear here</p>
+          </div>
+        </div>
       </div>
     </div>
   </AuthenticatedLayout>

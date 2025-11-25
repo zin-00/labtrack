@@ -34,6 +34,7 @@ import {
 import { useAuthStore } from '../../composable/useAuth';
 import SideBar from '../../components/sidebar/SideBar.vue';
 import LoaderSpinner from '../../components/spinner/LoaderSpinner.vue'
+import NotificationDropdown from '../../components/notifications/NotificationDropdown.vue'
 
 const auth = useAuthStore();
 const router = useRouter();
@@ -191,7 +192,10 @@ onUnmounted(() => {
                         </div>
 
                         <!-- User Menu -->
-                        <div class="flex items-center ml-auto">
+                        <div class="flex items-center ml-auto space-x-2">
+                            <!-- Notification Bell -->
+                            <NotificationDropdown />
+                            
                             <div class="relative dropdown-container">
                                 <button
                                     v-if="auth.user"

@@ -3,11 +3,13 @@ import { toRefs } from 'vue';
 import axios from 'axios';
 import { useApiUrl } from '../../api/api';
 import { useStates } from '../../composable/states';
+import { useToast } from '../../composable/toastification/useToast';
 
 const { api, getAuthHeader } = useApiUrl();
 
 export const useReportsStore = defineStore('reports', () => {
     const states = useStates();
+    const toast = useToast();
     const {
         success,
         error
@@ -39,7 +41,7 @@ export const useReportsStore = defineStore('reports', () => {
                 to: response.data.reports.to
             };
         } catch (err) {
-            error(err.response?.data?.message || 'Failed to fetch reports');
+            toast.error(err.response?.data?.message || 'Failed to fetch reports');
         } finally {
             isLoading.value = false;
         }
@@ -52,12 +54,12 @@ export const useReportsStore = defineStore('reports', () => {
                 input: rfid_uid,
                 description: description 
             });
-            success(response.data.message || 'Report submitted successfully!');
+            toast.success(response.data.message || 'Report submitted successfully!');
             console.log(response.data.message);
             isLoading.value = false;
         } catch (err) {
             console.error('Error submitting report:', err);
-            error(err.response?.data?.message || 'Error submitting report');
+            toast.error(err.response?.data?.message || 'Error submitting report');
         } finally {
             isLoading.value = false;
         }
@@ -67,11 +69,11 @@ export const useReportsStore = defineStore('reports', () => {
     const deleteReport = async (reportId) => {
         try {
             const response = await axios.delete(`${api}/reports/${reportId}`, getAuthHeader());
-            success(response.data.message || 'Report deleted successfully!');
+            toast.success(response.data.message || 'Report deleted successfully!');
             console.log(response.data.message);
         } catch (err) {
             console.error('Error deleting report:', err);
-            error(err.response?.data?.message || 'Error deleting report');
+            toast.error(err.response?.data?.message || 'Error deleting report');
         } finally {
             isLoading.value = false;
         }

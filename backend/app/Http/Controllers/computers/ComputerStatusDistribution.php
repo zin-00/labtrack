@@ -38,11 +38,11 @@ class ComputerStatusDistribution extends Controller
         $weeklySessionHours = [];
         for ($i = 6; $i >= 0; $i--) {
             $date = now()->subDays($i)->toDateString();
-            
+
             // Calculate total session hours for this day
             $totalSeconds = ComputerLog::whereDate('created_at', $date)
                 ->sum('uptime');
-            
+
             // Convert seconds to hours (rounded to 1 decimal)
             $hours = $totalSeconds > 0 ? round($totalSeconds / 3600, 1) : 0;
             $weeklySessionHours[] = $hours;
@@ -53,6 +53,27 @@ class ComputerStatusDistribution extends Controller
         $inactiveStudents = Student::where('status', 'inactive')->count();
         $restrictedStudents = Student::where('status', 'restricted')->count();
         $totalStudents = Student::count();
+
+        // Get laboratory usage statistics with session counts
+        $laboratoryUsage = DB::table('computers')
+            ->join('laboratories', 'computers.laboratory_id', '=', 'laboratories.id')
+            ->leftJoin('computer_logs', function($join) {
+                $join->on('computers.id', '=', 'computer_logs.computer_id')
+                     ->whereDate('computer_logs.created_at', '=', now()->toDateString());
+            })
+            ->select(
+                'laboratories.id as lab_id',
+                'laboratories.name as lab_name',
+                'laboratories.code as lab_code',
+                DB::raw('COUNT(DISTINCT computers.id) as total_computers'),
+                DB::raw('SUM(CASE WHEN computers.is_online = 1 THEN 1 ELSE 0 END) as online_count'),
+                DB::raw('SUM(CASE WHEN computers.is_online = 0 THEN 1 ELSE 0 END) as offline_count'),
+                DB::raw('COUNT(DISTINCT computer_logs.id) as session_count')
+            )
+            ->whereNotNull('computers.laboratory_id')
+            ->groupBy('laboratories.id', 'laboratories.name', 'laboratories.code')
+            ->orderBy('laboratories.name')
+            ->get();
 
         return response()->json([
             'locked_count' => $lockedCount,
@@ -65,6 +86,7 @@ class ComputerStatusDistribution extends Controller
             'latest_logs' => $latestLogs,
             'top_websites' => $topWebsites,
             'weekly_session_hours' => $weeklySessionHours,
+            'laboratory_usage' => $laboratoryUsage,
             'student_stats' => [
                 'active' => $activeStudents,
                 'inactive' => $inactiveStudents,
@@ -97,6 +119,28 @@ class ComputerStatusDistribution extends Controller
             $activeUnits = $getMonthlyCounts('active');
             $inactiveUnits = $getMonthlyCounts('inactive');
             $maintenanceUnits = $getMonthlyCounts('maintenance');
+
+            // Laboratory usage for month
+            $laboratoryUsage = DB::table('computers')
+                ->join('laboratories', 'computers.laboratory_id', '=', 'laboratories.id')
+                ->leftJoin('computer_logs', function($join) {
+                    $join->on('computers.id', '=', 'computer_logs.computer_id')
+                         ->whereYear('computer_logs.created_at', '=', now()->year);
+                })
+                ->select(
+                    'laboratories.id as lab_id',
+                    'laboratories.name as lab_name',
+                    'laboratories.code as lab_code',
+                    DB::raw('COUNT(DISTINCT computers.id) as total_computers'),
+                    DB::raw('SUM(CASE WHEN computers.is_online = 1 THEN 1 ELSE 0 END) as online_count'),
+                    DB::raw('SUM(CASE WHEN computers.is_online = 0 THEN 1 ELSE 0 END) as offline_count'),
+                    DB::raw('COUNT(DISTINCT computer_logs.id) as session_count')
+                )
+                ->whereNotNull('computers.laboratory_id')
+                ->groupBy('laboratories.id', 'laboratories.name', 'laboratories.code')
+                ->orderBy('laboratories.name')
+                ->get();
+
         } elseif ($period === 'week') {
             // Get daily counts for the last 7 days
             $getDailyCounts = function($status) {
@@ -120,7 +164,29 @@ class ComputerStatusDistribution extends Controller
             $activeUnits = $getDailyCounts('active');
             $inactiveUnits = $getDailyCounts('inactive');
             $maintenanceUnits = $getDailyCounts('maintenance');
-        } elseif ($period === 'today') {
+
+            // Laboratory usage for week (last 7 days)
+            $laboratoryUsage = DB::table('computers')
+                ->join('laboratories', 'computers.laboratory_id', '=', 'laboratories.id')
+                ->leftJoin('computer_logs', function($join) {
+                    $join->on('computers.id', '=', 'computer_logs.computer_id')
+                         ->where('computer_logs.created_at', '>=', now()->subDays(6)->startOfDay());
+                })
+                ->select(
+                    'laboratories.id as lab_id',
+                    'laboratories.name as lab_name',
+                    'laboratories.code as lab_code',
+                    DB::raw('COUNT(DISTINCT computers.id) as total_computers'),
+                    DB::raw('SUM(CASE WHEN computers.is_online = 1 THEN 1 ELSE 0 END) as online_count'),
+                    DB::raw('SUM(CASE WHEN computers.is_online = 0 THEN 1 ELSE 0 END) as offline_count'),
+                    DB::raw('COUNT(DISTINCT computer_logs.id) as session_count')
+                )
+                ->whereNotNull('computers.laboratory_id')
+                ->groupBy('laboratories.id', 'laboratories.name', 'laboratories.code')
+                ->orderBy('laboratories.name')
+                ->get();
+
+        } elseif ($period === 'day' || $period === 'today') {
             // Get count only for today
             $today = now()->startOfDay();
             $activeUnits = Computer::where('status', 'active')
@@ -137,11 +203,35 @@ class ComputerStatusDistribution extends Controller
             $activeUnits = [$activeUnits];
             $inactiveUnits = [$inactiveUnits];
             $maintenanceUnits = [$maintenanceUnits];
+
+            // Laboratory usage for today
+            $laboratoryUsage = DB::table('computers')
+                ->join('laboratories', 'computers.laboratory_id', '=', 'laboratories.id')
+                ->leftJoin('computer_logs', function($join) {
+                    $join->on('computers.id', '=', 'computer_logs.computer_id')
+                         ->whereDate('computer_logs.created_at', '=', now()->toDateString());
+                })
+                ->select(
+                    'laboratories.id as lab_id',
+                    'laboratories.name as lab_name',
+                    'laboratories.code as lab_code',
+                    DB::raw('COUNT(DISTINCT computers.id) as total_computers'),
+                    DB::raw('SUM(CASE WHEN computers.is_online = 1 THEN 1 ELSE 0 END) as online_count'),
+                    DB::raw('SUM(CASE WHEN computers.is_online = 0 THEN 1 ELSE 0 END) as offline_count'),
+                    DB::raw('COUNT(DISTINCT computer_logs.id) as session_count')
+                )
+                ->whereNotNull('computers.laboratory_id')
+                ->groupBy('laboratories.id', 'laboratories.name', 'laboratories.code')
+                ->orderBy('laboratories.name')
+                ->get();
         } else {
             // Default fallback to monthly zeros
             $activeUnits = array_fill(0, 12, 0);
             $inactiveUnits = array_fill(0, 12, 0);
             $maintenanceUnits = array_fill(0, 12, 0);
+
+            // Empty laboratory usage for unknown period
+            $laboratoryUsage = [];
         }
 
         $registeredStudents = Student::count();
@@ -151,6 +241,7 @@ class ComputerStatusDistribution extends Controller
             'inactiveUnits' => $inactiveUnits,
             'maintenanceUnits' => $maintenanceUnits,
             'registeredStudents' => $registeredStudents,
+            'laboratory_usage' => $laboratoryUsage,
         ]);
     }
 

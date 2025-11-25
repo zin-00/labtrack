@@ -24,6 +24,7 @@ import WorkStationMapping from '../pages/users/WorkStationMapping.vue'
 import LoginCloud from '../pages/auth/LoginCloud.vue'
 import AssignedComputers from '../pages/laboratory/AssignedComputers.vue'
 import Attendance from '../pages/attendance/Attendance.vue'
+import Notifications from '../pages/notifications/Notifications.vue'
 
 
 
@@ -53,6 +54,7 @@ const routes = [
   { path: '/workstation-mapping',   name: 'workstation-mapping',component: WorkStationMapping, meta: { requiresAuth: true }},
   { path: '/assigned-computers',    name: 'assigned-computers', component: AssignedComputers, meta: { requiresAuth: true }},
   { path: '/attendance',            name: 'attendance',         component: Attendance,         meta: { requiresAuth: true }},
+  { path: '/notifications',         name: 'notifications',      component: Notifications,      meta: { requiresAuth: true }},
 ]
 
 const router = createRouter({

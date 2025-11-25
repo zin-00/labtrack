@@ -19,8 +19,8 @@ export const useWorkstationStore = defineStore('workstation', () => {
     } = toRefs(states);
 
     const getListAssignedStudents = async (page = 1, filters = {}) => {
+        isLoading.value = true;
         try {
-            isLoading.value = true;
             const params = new URLSearchParams();
             params.append('page', page);
             
@@ -39,7 +39,6 @@ export const useWorkstationStore = defineStore('workstation', () => {
                 total: response.data.assigned_students.total
             }
 
-            isLoading.value = false;
             console.log('Assigned Students:', assignedStudents.value);
             console.log('Pagination:', pagination.value);
         } catch (err) {

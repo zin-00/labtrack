@@ -179,6 +179,7 @@ class ComputerController extends Controller
     }
 
     broadcast(new ComputerEvent('update', $computer));
+    broadcast(new MainEvent('computer', 'update', $computer));
 
     return response()->json([
         'message' => 'Computer updated successfully',

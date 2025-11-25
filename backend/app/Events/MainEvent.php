@@ -35,6 +35,9 @@ class MainEvent implements ShouldBroadcast, ShouldQueue
     {
         return [
             new Channel('main-channel'),
+            new Channel('computer-channel'),
+            new Channel('report-channel'),
+            new Channel('recent-channel'),
         ];
     }
     public function broadcastAs()

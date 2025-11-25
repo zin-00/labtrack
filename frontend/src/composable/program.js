@@ -46,11 +46,11 @@ const { api, getAuthHeader } = useApiUrl();
         total: paginated.total,
       };
 
-      toast.success('Success', response.data.message);
+      // toast.success('Success', response.data.message);
     } catch (error) {
       programs.value = [];
       paginatedPrograms.value = [];
-      toast.error('Error', "Failed to fetch programs");
+      // toast.error('Error', "Failed to fetch programs");
       console.error("Error fetching programs:", error);
     }
   };

@@ -9,14 +9,16 @@ import Modal from '../components/modal/Modal.vue';
 import axios from 'axios';
 import { useApiUrl } from '../api/api';
 import { useReportsStore } from '../store/reports/reports';
+import { useRealTimeEvents } from '../composable/events/EventsListener';
 
 const { api} = useApiUrl();
+
 
 const comp = useComputerStore();
 const compLog = useComputerLogStore();
 const lab = useLaboratoryStore();
 const { submitReport } = useReportsStore();
-
+const { register, handleEventUpdate } = useRealTimeEvents();
 const { fetchLaboratories } = lab;
 const { unlockComputersByLab, fetchAllComputers, unlockComputer} = comp;
 const { fetchRecentScans } = compLog;
@@ -158,21 +160,21 @@ const closeRfidInfoModal = () => {
 };
 
 
-const initializeEcho = () => {
-  if (!window.Echo) {
-    console.log('Echo is not defined')
-  }
-  if (window.Echo) {
-    let echoChannel = window.Echo.channel('computer');
-    echoChannel.listen('ComputerUnlockRequested', (e) => {
-      console.log('Event received:', e.message);
-      console.log(e);
-      if (e.studentId) {
-        latestScan.value = e.studentId;
-      }
-    })
-  }
-}
+// const initializeEcho = () => {
+//   if (!window.Echo) {
+//     console.log('Echo is not defined')
+//   }
+//   if (window.Echo) {
+//     let echoChannel = window.Echo.channel('computer');
+//     echoChannel.listen('ComputerUnlockRequested', (e) => {
+//       console.log('Event received:', e.message);
+//       console.log(e);
+//       if (e.studentId) {
+//         latestScan.value = e.studentId;
+//       }
+//     })
+//   }
+// }
 
 const sendEmergencyUnlock = async (rfid_uid) => {
   if (!selectedComputerForUnlock.value) return;
@@ -190,11 +192,11 @@ const sendEmergencyUnlock = async (rfid_uid) => {
 
 const EventListener = () => {
   if(window.Echo){
-    let echoChannel = window.Echo.channel('main-channel');
-    echoChannel.listen('.MainEvent', (e) => {
+    window.Echo.channel('main-channel')
+    .listen('.MainEvent', (e) => {
       switch(e.type) {
-        case 'Computer':
-          alert('Received Computer event', e.data);
+        case 'computer':
+          // alert('Received Computer event', e.data);
           const computerIndex = computers.value.findIndex(c => c.id === e.data.id);
           if(computerIndex !== -1){
             computers.value[computerIndex] = {
@@ -208,7 +210,7 @@ const EventListener = () => {
           break;
 
         case 'RecentScan':
-          alert('Received RecentScan event', e.data);
+          // alert('Received RecentScan event', e.data);
           const scanIndex = latestScan.value.findIndex(c => c.id === e.data.id);
           if(scanIndex !== -1){
             latestScan.value[scanIndex] = {
@@ -222,7 +224,6 @@ const EventListener = () => {
           break;
 
         default:
-          // Handle unknown event types
           console.warn('Unknown event type:', e.type);
       }
     })
@@ -230,7 +231,7 @@ const EventListener = () => {
 }
 
 onMounted(() => {
-  initializeEcho();
+    // initializeEcho();
   EventListener();
   fetchRecentScans();
   fetchLaboratories();

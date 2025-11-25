@@ -6,6 +6,7 @@ use App\Events\Audit\AuditEvent;
 use App\Http\Controllers\Controller;
 use App\Models\Activity\AuditLogs;
 use App\Models\User;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 
 class AuthController extends Controller
@@ -46,6 +47,31 @@ class AuthController extends Controller
 
         $user = auth()->user();
         $token = $user->createToken('auth_token')->plainTextToken;
+        $currentIp = $request->ip();
+
+        // Check if IP address has changed from last login
+        $lastLogin = AuditLogs::where('user_id', $user->id)
+            ->where('action', 'login')
+            ->orderBy('created_at', 'desc')
+            ->first();
+
+        if ($lastLogin && $lastLogin->ip_address !== $currentIp) {
+            // IP address changed - send notification to the user
+            NotificationService::notifyUser(
+                $user->id,
+                'warning',
+                'New Login Location Detected',
+                "Your account was accessed from a new IP address: {$currentIp}. Previous IP: {$lastLogin->ip_address}. If this wasn't you, please secure your account immediately.",
+                [
+                    'icon' => 'shield',
+                    'data' => [
+                        'old_ip' => $lastLogin->ip_address,
+                        'new_ip' => $currentIp,
+                        'login_time' => now()->toDateTimeString()
+                    ]
+                ]
+            );
+        }
 
          $audit_logs = AuditLogs::create([
                     'user_id'    => $user->id,

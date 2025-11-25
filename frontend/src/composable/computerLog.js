@@ -84,10 +84,6 @@ export const useComputerLogStore = defineStore('computerLog', () => {
                 params.to = dateFilter.value.to;
             }
 
-            if (studentFilter.value) {
-                params.student_id = studentFilter.value;
-            }
-
             if (programFilter.value) {
                 params.program_id = programFilter.value;
             }

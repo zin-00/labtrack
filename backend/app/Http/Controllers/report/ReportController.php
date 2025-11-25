@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\report;
 
+use App\Events\MainEvent;
 use App\Http\Controllers\Controller;
 use App\Models\Report;
 use App\Models\Student;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 
 class ReportController extends Controller
@@ -69,6 +71,18 @@ class ReportController extends Controller
 
         ]);
 
+        // Send notification to all admins about new report
+        NotificationService::broadcast(
+            'report',
+            'New Report Submitted',
+            "A new report has been submitted by {$student->fullname}: {$request->description}",
+            [
+                'link' => '/reports',
+                'data' => ['report_id' => $report->id, 'student_id' => $student->id]
+            ]
+        );
+
+        broadcast(new MainEvent('report', 'created', $report));
         return response()->json([
             'message' => 'Report created successfully',
             'report' => $report,

@@ -329,7 +329,7 @@ onMounted(() => {
                 >
                   <option value="">All Programs</option>
                   <option v-for="program in programs" :key="program.id" :value="program.id">
-                    {{ program.program_name }}
+                    {{ program.program_code }}
                   </option>
                 </select>
 
@@ -340,7 +340,7 @@ onMounted(() => {
                 >
                   <option value="">All Year Levels</option>
                   <option v-for="yearLevel in yearLevelsNotPaginated" :key="yearLevel.id" :value="yearLevel.id">
-                    {{ yearLevel.year_level_name }}
+                    {{ yearLevel.name }}
                   </option>
                 </select>
 
@@ -351,7 +351,7 @@ onMounted(() => {
                 >
                   <option value="">All Sections</option>
                   <option v-for="section in secNotPaginated" :key="section.id" :value="section.id">
-                    {{ section.section_name }}
+                    {{ section.name }}
                   </option>
                 </select>
                 

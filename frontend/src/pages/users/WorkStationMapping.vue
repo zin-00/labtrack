@@ -93,7 +93,7 @@ const unAssignStudent_func = async () => {
     }
     await unAssignStudent(selectedData.value.id);
     isConfirmationModalOpen.value = false;
-    applyFilters(pagination.value.current_page || 1);
+    applyFiltersImmediate(pagination.value.current_page || 1);
 };
 
 const toggleRowSelection = (id) => {
@@ -118,7 +118,7 @@ const bulkUnassign = async () => {
     }
     selectedRows.value.clear();
     showBulkDeleteModal.value = false;
-    applyFilters(pagination.value.current_page || 1);
+    applyFiltersImmediate(pagination.value.current_page || 1);
 };
 
 const clearFilters = () => {
@@ -127,11 +127,11 @@ const clearFilters = () => {
     selectedYearLevel.value = '';
     selectedSection.value = '';
     selectedProgram.value = '';
-    applyFilters(1);
+    applyFiltersImmediate(1);
 };
 
 const refreshData = () => {
-    applyFilters(pagination.value.current_page || 1);
+    applyFiltersImmediate(pagination.value.current_page || 1);
 };
 
 // Bulk assignment methods
@@ -268,7 +268,7 @@ const performBulkAssignment = async () => {
         fetchAvailableComputers();
         
         // Refresh the main table
-        applyFilters(1);
+        applyFiltersImmediate(1);
     } catch (error) {
         toast.error('Error', error.response?.data?.message || 'Failed to assign students');
         console.error('Assignment error:', error);
@@ -321,6 +321,18 @@ const applyFilters = debounce((page = 1) => {
     };
     getListAssignedStudents(page, filters);
 }, 300);
+
+// Immediate filter function (no debounce) for initial load and manual refresh
+const applyFiltersImmediate = (page = 1) => {
+    const filters = {
+        search: searchQuery.value,
+        program: selectedProgram.value?.id,
+        section: selectedSection.value?.id,
+        year_level: selectedYearLevel.value?.id,
+        laboratory: selectedLab.value?.id
+    };
+    getListAssignedStudents(page, filters);
+};
 
 // Watch filters and trigger backend request
 watch(searchQuery, () => {
@@ -494,7 +506,7 @@ const eventListener = () => {
                     const index = list.findIndex(a => a.id == data.id);
                     if (index !== -1) {
                         list.splice(index, 1);
-                        console.log('✅ Deleted assignment:', data.id);
+                        console.log('Deleted assignment:', data.id);
                     }
                 }
             });
@@ -505,16 +517,25 @@ const eventListener = () => {
 
 // Lifecycle
 onMounted(async () => {
-    eventListener();
+    isLoading.value = true;
+    
+    try {
+        eventListener();
 
-    await Promise.all([
-        laboratory.fetchLaboratories(),
-        program.fetchPrograms(),
-        section.getSections(),
-        yearLevel.getYearLevels()
-    ]);
+        await Promise.all([
+            laboratory.fetchLaboratories(),
+            program.fetchPrograms(),
+            section.getSections(),
+            yearLevel.getYearLevels()
+        ]);
 
-    applyFilters(1);
+        applyFiltersImmediate(1);
+    } catch (error) {
+        console.error('Error during initialization:', error);
+        toast.error('Error', 'Failed to load initial data');
+    } finally {
+        isLoading.value = false;
+    }
 });
 </script>
 
@@ -653,16 +674,10 @@ onMounted(async () => {
 
                 <!-- Table Card -->
                 <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                    <!-- Loading State -->
-                    <div v-if="isLoading" class="flex items-center justify-center py-16">
-                        <div class="flex flex-col items-center gap-3">
-                            <div class="w-10 h-10 border-4 border-gray-200 border-t-gray-600 rounded-full animate-spin"></div>
-                            <span class="text-xs text-gray-500 font-medium">Loading workstation assignments...</span>
-                        </div>
-                    </div>
+
 
                     <!-- Empty State -->
-                    <div v-else-if="!filterData.length" class="text-center py-16">
+                    <div v-if="!filterData.length" class="text-center py-16">
                         <div class="inline-flex items-center justify-center w-14 h-14 bg-gray-100 rounded-full mb-3">
                             <svg class="w-7 h-7 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />

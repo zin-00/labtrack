@@ -489,7 +489,29 @@ const handleExportReport = (report) => {
     }
 };
 
+const EventListener = () => {
+    if(!window.Echo){
+        return;
+    }
+    window.Echo.channel('main-channel')
+    .listen('.MainEvent', (e) => {
+        
+        if(e.type === 'report'){
+            // alert('Received Report event', e.data);
+            const index = reports.value.findIndex(r => r.id === e.data.id);
+            if (index !== -1) {
+                reports.value[index] = {...reports.value[index], ...e.data};
+                reports.value.splice(index, 1, reports.value[index]);
+            } else {
+                reports.value.unshift(e.data);
+            }
+        }
+    })
+
+}
+
 onMounted(() => {
+    EventListener();
     fetchReports();
 });
 </script>

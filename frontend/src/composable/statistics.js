@@ -20,6 +20,7 @@
     const latestLogs = ref([]);
     const topWebsites = ref([]);
     const weeklySessionHours = ref([]);
+    const laboratoryUsage = ref([]);
 
     // Student statistics
     const studentStats = ref({
@@ -51,6 +52,7 @@
             activeComputerCount.value = data.activeUnits || [];
             inactiveComputerCount.value = data.inactiveUnits || [];
             maintenanceComputerCount.value = data.maintenanceUnits || [];
+            laboratoryUsage.value = data.laboratory_usage || [];
         } catch (error) {
             console.error('Error details:', {
             error: error.message,
@@ -64,6 +66,7 @@
             activeComputerCount.value = [];
             inactiveComputerCount.value = [];
             maintenanceComputerCount.value = [];
+            laboratoryUsage.value = [];
         }
         };
 
@@ -120,6 +123,7 @@
         latestLogs,
         topWebsites,
         weeklySessionHours,
+        laboratoryUsage,
         studentStats,
       fetchStatusDistribution,
       fetchDataDistribution,

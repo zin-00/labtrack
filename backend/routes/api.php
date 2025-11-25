@@ -51,4 +51,5 @@ require __DIR__.'/computer/computer.php';
 require __DIR__.'/logs/logs.php';
 require __DIR__.'/logs/audit/audit.php';
 require __DIR__.'/dashboard/dashboard.php';
+require __DIR__.'/notification/notification.php';
 

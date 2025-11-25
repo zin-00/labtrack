@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Activity\AuditLogs;
 use App\Models\RequestAccess;
 use App\Models\User;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -46,6 +47,17 @@ class RequestAccessController extends Controller
             $data['status'] = 'pending';
 
             $requestAccess = RequestAccess::create($data);
+
+            // Send notification to all admins about new account request
+            NotificationService::broadcast(
+                'access_request',
+                'New Account Request',
+                "{$requestAccess->fullname} ({$requestAccess->email}) has requested a {$requestAccess->role} account.",
+                [
+                    'link' => '/request-access',
+                    'data' => ['request_id' => $requestAccess->id, 'role' => $requestAccess->role]
+                ]
+            );
 
             return response()->json([
                 'success' => true,
@@ -102,6 +114,26 @@ class RequestAccessController extends Controller
         ]);
         AuditEvent::dispatch($audit_log);
 
+        // Notify the new user that their account has been approved
+        NotificationService::notifyUser(
+            $user->id,
+            'success',
+            'Account Approved!',
+            'Your account request has been approved. Welcome to LabTrack!',
+            ['link' => '/dashboard']
+        );
+
+        // Notify admins about the approval
+        NotificationService::broadcast(
+            'access_request',
+            'Account Request Approved',
+            "The account request from {$requestAccess->fullname} has been approved by " . Auth::user()->name,
+            [
+                'link' => '/request-access',
+                'data' => ['request_id' => $requestAccess->id, 'user_id' => $user->id]
+            ]
+        );
+
         return response()->json([
             'message' => 'Request approved successfully',
             'user'    => $user,
@@ -131,6 +163,17 @@ class RequestAccessController extends Controller
             'description' => "RequestAccess #{$requestAccess->id} rejected by admin",
         ]);
         AuditEvent::dispatch($audit_log);
+
+        // Notify admins about the rejection
+        NotificationService::broadcast(
+            'access_request',
+            'Account Request Rejected',
+            "The account request from {$requestAccess->fullname} has been rejected by " . Auth::user()->name,
+            [
+                'link' => '/request-access',
+                'data' => ['request_id' => $requestAccess->id]
+            ]
+        );
 
         return response()->json([
             'message' => 'RequestAccess rejected successfully',

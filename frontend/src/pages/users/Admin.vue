@@ -40,9 +40,6 @@ const { admins,
 
 const { fetchAdmins, deleteAdmin, updateAdmin, storeAdmin } = admin;
 
-const router = useRouter();
-const auth = useStudentStore();
-const prog = useProgramStore();
 const xl = useExcelStore();
 
 
