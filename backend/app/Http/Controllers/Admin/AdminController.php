@@ -92,7 +92,7 @@ public function update(Request $request, $id){
     if (!empty($data['password'])) {
         $data['password'] = bcrypt($data['password']);
     } else {
-        unset($data['password']); // don’t overwrite if empty
+        unset($data['password']);
     }
 
     $user = User::findOrFail($id);

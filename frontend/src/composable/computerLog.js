@@ -121,7 +121,7 @@ export const useComputerLogStore = defineStore('computerLog', () => {
 
     const fetchRecentScans = async () => {
     try{
-        const response = await axios.get(`${api}/student-sessions`, getAuthHeader());
+        const response = await axios.get(`${api}/pub/student-sessions`, getAuthHeader());
         latestScan.value = response.data.latestScans || [];
     }catch(err) {
         toast.error('Error', 'Failed to fetch recent scans');

@@ -15,3 +15,4 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/assign-laboratories', [ComputerController::class, 'assignLaboratory']);
     Route::post('/unassign-laboratories', [ComputerController::class, 'unassignLaboratory']);
 });
+    Route::get('/pub/laboratories', [LabController::class, 'index']);

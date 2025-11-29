@@ -34,7 +34,7 @@ public function store(Request $request)
         'title'      => 'nullable|string',
         'browser'    => 'nullable|string',
         'duration'   => 'nullable|string',
-        'rfid_uid'   => 'nullable|string|max:255', // ← Must be here
+        'rfid_uid'   => 'nullable|string|max:255',
     ]);
 
     $computer = Computer::where('ip_address', $data['ip_address'])->first();
@@ -76,8 +76,8 @@ public function store(Request $request)
     return response()->json([
         'message' => 'Browser activity logged successfully',
         'activity' => $activity,
-        'student_id' => $studentId, // Include in response for debugging
-        'rfid_uid' => $data['rfid_uid'] ?? null, // Include in response for debugging
+        'student_id' => $studentId,
+        'rfid_uid' => $data['rfid_uid'] ?? null,
     ], 201);
 }
     public function getBrowserActivities(Request $request)

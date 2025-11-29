@@ -19,7 +19,7 @@ const compLog = useComputerLogStore();
 const lab = useLaboratoryStore();
 const { submitReport } = useReportsStore();
 const { register, handleEventUpdate } = useRealTimeEvents();
-const { fetchLaboratories } = lab;
+const { getLaboratories } = lab;
 const { unlockComputersByLab, fetchAllComputers, unlockComputer} = comp;
 const { fetchRecentScans } = compLog;
 const { latestScan } = toRefs(compLog);
@@ -149,32 +149,6 @@ const closeReportModal = () => {
   errorMessage.value = '';
 };
 
-const openRfidInfoModal = (scan) => {
-  selectedScanForInfo.value = scan;
-  showRfidInfoModal.value = true;
-};
-
-const closeRfidInfoModal = () => {
-  showRfidInfoModal.value = false;
-  selectedScanForInfo.value = null;
-};
-
-
-// const initializeEcho = () => {
-//   if (!window.Echo) {
-//     console.log('Echo is not defined')
-//   }
-//   if (window.Echo) {
-//     let echoChannel = window.Echo.channel('computer');
-//     echoChannel.listen('ComputerUnlockRequested', (e) => {
-//       console.log('Event received:', e.message);
-//       console.log(e);
-//       if (e.studentId) {
-//         latestScan.value = e.studentId;
-//       }
-//     })
-//   }
-// }
 
 const sendEmergencyUnlock = async (rfid_uid) => {
   if (!selectedComputerForUnlock.value) return;
@@ -234,7 +208,7 @@ onMounted(() => {
     // initializeEcho();
   EventListener();
   fetchRecentScans();
-  fetchLaboratories();
+  getLaboratories();
   fetchAllComputers();
 });
 </script>

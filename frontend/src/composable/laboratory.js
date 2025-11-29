@@ -51,6 +51,15 @@ export const useLaboratoryStore = defineStore('laboratory', () => {
     }
   };
 
+  const getLaboratories = async () => {
+    try{
+      const response = await axios.get(`${api}/pub/laboratories`, getAuthHeader());
+      laboratories.value = response.data.laboratories || [];
+    }catch(error){
+      toast.error('error', error);
+    }
+  }
+
   function selectedLabFilter(lab) {
     if (selectedLab.value) {
       return lab.id === selectedLab.value.id;
@@ -121,6 +130,7 @@ export const useLaboratoryStore = defineStore('laboratory', () => {
     unassignedComputers,
     selectedComputers,
     currentLabId,
+    getLaboratories,
     fetchLaboratories,
     storeLaboratory,
     updateLaboratory,

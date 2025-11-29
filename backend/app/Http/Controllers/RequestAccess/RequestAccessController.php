@@ -89,7 +89,7 @@ class RequestAccessController extends Controller
         $user = User::create([
             'name'     => $requestAccess->fullname,
             'email'    => $requestAccess->email,
-            'password' => $requestAccess->password, // already hashed
+            'password' => $requestAccess->password,
             'status'   => 'active',
             'roles'    => $requestAccess->role,
         ]);

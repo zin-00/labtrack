@@ -244,8 +244,4 @@ class ComputerStatusDistribution extends Controller
             'laboratory_usage' => $laboratoryUsage,
         ]);
     }
-
-
-
-
 }

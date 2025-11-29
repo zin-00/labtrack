@@ -2,7 +2,7 @@ import {ref} from 'vue';
 import {defineStore} from 'pinia';
 import axios from 'axios';
 import {useApiUrl} from '../api/api';
-import {useToast} from 'vue-toastification';
+import {useToast} from '../composable/toastification/useToast.js';
 
 const toast = useToast();
 const {api, getAuthHeader} = useApiUrl();
@@ -53,11 +53,11 @@ export const useRequestAccessStore = defineStore('requestAccess', () => {
 
         try {
             const response = await axios.patch(`${api}/request-access/${id}/approve`, {} ,getAuthHeader());
-            toast.success(response.data.message || 'Request approved successfully}');
+            toast.success('success',response.data.message || 'Request approved successfully}');
             console.log(response.data.message);
             await fetchRequests();
         } catch (error) {
-            toast.error('Failed to approve request.');
+            toast.error('error', error.response?.data?.message || 'Failed to approve request.');
             console.error('Error approving request:', error)            
         }
     }
@@ -67,11 +67,11 @@ export const useRequestAccessStore = defineStore('requestAccess', () => {
 
         try {
             const response = await axios.patch(`${api}/request-access/${id}/reject`, {} ,getAuthHeader());
-            toast.success(response.data.message || 'Request rejected');
+            toast.success('success',response.data.message || 'Request rejected');
             console.log(response.data.message);
             await fetchRequests();
         } catch (error) {
-            toast.error('Failed to reject request.');
+            toast.error('error', error.response?.data?.message || 'Failed to reject request.');
             console.error('Error rejecting request:', error)
         }
     }

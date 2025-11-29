@@ -542,7 +542,7 @@ onMounted(async () => {
             leave-from-class="opacity-100"
             leave-to-class="opacity-0"
         >
-            <div v-if="modalState" class="fixed inset-0 bg-white/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div v-if="modalState" class="fixed inset-0 bg-white/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
                 <Transition
                     enter-active-class="ease-out duration-300"
                     enter-from-class="opacity-0 scale-95"

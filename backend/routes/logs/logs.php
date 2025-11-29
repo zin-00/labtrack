@@ -9,3 +9,4 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/student-sessions', [ComputerLogController::class, 'index']);
     Route::get('/logs/export', [ComputerLogController::class, 'export']);
 });
+    Route::get('/pub/student-sessions', [ComputerLogController::class, 'index']);

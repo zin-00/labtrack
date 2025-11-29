@@ -14,7 +14,6 @@ class ComputerStudent extends Model
         'laboratory_id',
     ];
 
-    // Add unique constraint to prevent duplicate assignments
     public static function boot()
     {
         parent::boot();

@@ -16,7 +16,6 @@ class Laboratory extends Model
     public function computers(){
         return $this->hasMany(Computer::class);
     }
-      // Add this method to get active computers count
     public function getActiveComputersCountAttribute()
     {
         return $this->computers()->where('status', 'active')->count();

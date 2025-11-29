@@ -1,7 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../composable/useAuth' // adjust path
 import Home from '../pages/Home.vue'
-import Login from '../pages/auth/Login.vue'
 import Register from '../pages/auth/Register.vue'
 import Dashboard from '../pages/dashboard/Dashboard.vue'
 import Computers from '../pages/computer/Computers.vue'

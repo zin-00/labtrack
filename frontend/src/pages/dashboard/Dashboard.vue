@@ -92,9 +92,9 @@ const radialSeries = computed(() => [
 ]);
 
 const lineChartSeries = computed(() => [
-  { name: "Active Units", data: activeComputerCount.value || [] },
-  { name: "Inactive Units", data: inactiveComputerCount.value || [] },
-  { name: "Maintenance Units", data: maintenanceComputerCount.value || [] },
+  { name: "Active Nodes", data: activeComputerCount.value || [] },
+  { name: "Inactive Nodes", data: inactiveComputerCount.value || [] },
+  { name: "Maintenance Nodes", data: maintenanceComputerCount.value || [] },
   {
     name: "Total Sessions",
     data: (activeComputerCount.value || []).map((val, i) =>
@@ -869,7 +869,7 @@ onMounted(async () => {
               <p class="text-xs text-gray-500 mt-1">Most accessed sites across all laboratories</p>
             </div>
             <router-link 
-              to="/browser_activity"
+              to="/browser-activity"
               class="text-xs bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg font-medium hover:bg-gray-200 transition-colors inline-flex items-center gap-1"
             >
               <span>View All</span>
@@ -941,7 +941,6 @@ onMounted(async () => {
         </div>
 
         <!-- Latest Logs Table - Full Width -->
-        <!-- Recent Activity - Minimalist -->
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <div class="flex items-center justify-between mb-6">
             <div>
