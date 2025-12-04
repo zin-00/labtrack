@@ -10,7 +10,7 @@
 </template>
 
 <script setup>
-import { defineProps, defineEmits, watch } from 'vue'
+import {defineEmits, watch } from 'vue'
 import Toast from './Toast.vue'
 
 const props = defineProps({

@@ -1,7 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../composable/useAuth' // adjust path
 import Home from '../pages/Home.vue'
-import Register from '../pages/auth/Register.vue'
 import Dashboard from '../pages/dashboard/Dashboard.vue'
 import Computers from '../pages/computer/Computers.vue'
 import Users from '../pages/users/Users.vue'
@@ -21,6 +20,7 @@ import ComputerActivity from '../pages/activity/ComputerActivity.vue'
 import AuditLogs from '../pages/activity/AuditLogs.vue'
 import WorkStationMapping from '../pages/users/WorkStationMapping.vue'
 import LoginCloud from '../pages/auth/LoginCloud.vue'
+import ForgotPassword from '../pages/auth/ForgotPassword.vue'
 import AssignedComputers from '../pages/laboratory/AssignedComputers.vue'
 import Attendance from '../pages/attendance/Attendance.vue'
 import Notifications from '../pages/notifications/Notifications.vue'
@@ -31,7 +31,7 @@ import Notifications from '../pages/notifications/Notifications.vue'
 const routes = [
   { path: '',                       name: 'Home',               component: Home },
   { path: '/login',                 name: 'login',              component: LoginCloud },
-  { path: '/register',              name: 'register',           component: Register },
+  { path: '/forgot-password',       name: 'forgot-password',    component: ForgotPassword },
   { path: '/request-account',       name: 'request-account',    component: RequestForm },
   { path: '/profile',               name: 'profile',            component: Profile,           meta: { requiresAuth: true }},
   { path: '/dashboard',             name: 'dashboard',          component: Dashboard,         meta: { requiresAuth: true }},

@@ -130,23 +130,23 @@
           </div>
         </div>
         
-        <!-- Settings Button -->
+        <!-- Profile Button -->
         <router-link 
-          to="/settings"
-          @mouseenter="(e) => showTooltip(e, 'Settings')"
+          to="/profile"
+          @mouseenter="(e) => showTooltip(e, 'Profile')"
           @mouseleave="hideTooltip"
           class="flex items-center w-full p-2.5 rounded-lg transition-all duration-200 text-sm font-medium mb-1 group"
           :class="{
-            'bg-gray-100 text-gray-800': isActiveRoute('/settings'),
-            'text-gray-600 hover:bg-gray-50 hover:text-gray-800': !isActiveRoute('/settings')
+            'bg-gray-100 text-gray-800': isActiveRoute('/profile'),
+            'text-gray-600 hover:bg-gray-50 hover:text-gray-800': !isActiveRoute('/profile')
           }"
         >
-          <CogIcon class="h-5 w-5 flex-shrink-0" />
+          <UserCircleIcon class="h-5 w-5 flex-shrink-0" />
           <span 
             class="ms-3 transition-all duration-200 overflow-hidden whitespace-nowrap"
             :class="{ 'opacity-0 w-0': sidebarState === 'icon', 'opacity-100': sidebarState === 'full' }"
           >
-            Settings
+            Profile
           </span>
         </router-link>
         
@@ -155,9 +155,9 @@
           @click="$emit('logout')"
           @mouseenter="(e) => showTooltip(e, 'Log Out')"
           @mouseleave="hideTooltip"
-          class="flex items-center w-full p-2.5 text-gray-600 rounded-lg hover:bg-gray-50 hover:text-gray-800 transition-all duration-200 text-sm font-medium group"
+          class="flex items-center w-full p-2.5 text-gray-600 rounded-lg hover:bg-red-50 hover:text-red-600 transition-all duration-200 text-sm font-medium group"
         >
-          <ArrowRightOnRectangleIcon class="h-5 w-5 flex-shrink-0" />
+          <ArrowLeftOnRectangleIcon class="h-5 w-5 flex-shrink-0" />
           <span 
             class="ms-3 transition-all duration-200 overflow-hidden whitespace-nowrap"
             :class="{ 'opacity-0 w-0': sidebarState === 'icon', 'opacity-100': sidebarState === 'full' }"
@@ -191,8 +191,8 @@ import {
   ChevronRightIcon, 
   ChevronLeftIcon, 
   ChevronDownIcon,
-  CogIcon,
-  ArrowRightOnRectangleIcon
+  UserCircleIcon,
+  ArrowLeftOnRectangleIcon
 } from '@heroicons/vue/24/outline';
 
 // Props for customization

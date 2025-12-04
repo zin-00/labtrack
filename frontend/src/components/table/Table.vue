@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, defineProps, defineEmits, useSlots } from 'vue'
+import { ref, computed, defineEmits, useSlots } from 'vue'
 import {
   PencilIcon,
   TrashIcon,
@@ -391,17 +391,17 @@ const getVisiblePages = () => {
     <!-- Pagination -->
     <div
       v-if="pagination.last_page > 1"
-      class="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4 pt-3 border-t border-gray-200"
+      class="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 py-4 border-t border-gray-100 bg-white"
     >
-      <div class="text-xs text-gray-500 order-2 sm:order-1">
+      <div class="text-sm text-gray-500 order-2 sm:order-1">
         {{ pagination.from ?? ((pagination.current_page - 1) * pagination.per_page + 1) }}-{{ pagination.to ?? (pagination.current_page * pagination.per_page > pagination.total ? pagination.total : pagination.current_page * pagination.per_page) }} of {{ pagination.total }}
       </div>
 
-      <div class="flex items-center gap-1 order-1 sm:order-2">
+      <div class="flex items-center gap-2 order-1 sm:order-2">
         <button
           @click="changePage(pagination.current_page - 1)"
           :disabled="pagination.current_page === 1"
-          class="px-2.5 py-1 text-xs border border-gray-300 rounded text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          class="px-3 py-1.5 text-sm bg-white border border-gray-200 rounded-md text-gray-600 hover:bg-gray-50 hover:border-gray-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           Prev
         </button>
@@ -411,21 +411,21 @@ const getVisiblePages = () => {
             v-if="page !== '...'"
             @click="changePage(page)"
             :class="[
-              'px-2.5 py-1 text-xs rounded border transition-colors',
+              'min-w-[36px] px-3 py-1.5 text-sm rounded-md border transition-colors',
               page === pagination.current_page
-                ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium'
-                : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+                ? 'border-gray-300 bg-gray-100 text-gray-800 font-medium'
+                : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300'
             ]"
           >
             {{ page }}
           </button>
-          <span v-else class="px-1 text-gray-400 text-xs">...</span>
+          <span v-else class="px-2 text-gray-400 text-sm">...</span>
         </template>
 
         <button
           @click="changePage(pagination.current_page + 1)"
           :disabled="pagination.current_page === pagination.last_page"
-          class="px-2.5 py-1 text-xs border border-gray-300 rounded text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          class="px-3 py-1.5 text-sm bg-white border border-gray-200 rounded-md text-gray-600 hover:bg-gray-50 hover:border-gray-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           Next
         </button>

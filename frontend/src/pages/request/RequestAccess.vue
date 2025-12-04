@@ -9,7 +9,8 @@ import {
     MagnifyingGlassIcon,
     XMarkIcon,
     XCircleIcon,
-    CheckCircleIcon
+    CheckCircleIcon,
+    EyeIcon,
 } from '@heroicons/vue/24/outline';
 import LoaderSpinner from '../../components/spinner/LoaderSpinner.vue'
 
@@ -59,24 +60,6 @@ const filterRequests = computed(() => {
 });
 
 // Methods
-const getStatusClass = (status) => {
-    const statusClasses = {
-        'active': 'bg-green-50 text-green-700 border-green-200',
-        'Active': 'bg-green-50 text-green-700 border-green-200',
-        'inactive': 'bg-red-50 text-red-700 border-red-200', 
-        'Inactive': 'bg-red-50 text-red-700 border-red-200',
-        'pending': 'bg-yellow-50 text-yellow-700 border-yellow-200',
-        'Pending': 'bg-yellow-50 text-yellow-700 border-yellow-200',
-        'suspended': 'bg-orange-50 text-orange-700 border-orange-200',
-        'Suspended': 'bg-orange-50 text-orange-700 border-orange-200',
-        'approved': 'bg-blue-50 text-blue-700 border-blue-200',
-        'Approved': 'bg-blue-50 text-blue-700 border-blue-200',
-        'rejected': 'bg-gray-100 text-gray-700 border-gray-300',
-        'Rejected': 'bg-gray-100 text-gray-700 border-gray-300',
-    };
-    return statusClasses[status] || 'bg-gray-50 text-gray-700 border-gray-200';
-};
-
 const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -101,12 +84,42 @@ const clearFilters = () => {
 };
 
 const refreshData = () => {
-    fetchRequests();
+    fetchRequests(pagination.value.current_page);
 };
+
+const goToPage = (page) => {
+    if (page >= 1 && page <= pagination.value.last_page && page !== pagination.value.current_page) {
+        fetchRequests(page);
+    }
+};
+
+const handleView = (request) => {
+    console.log('View request:', request);
+};
+
+const EventListener = () => {
+    if(!window.Echo) return;
+    window.Echo.channel('main-channel')
+        .listen('.MainEvent', (e) => {
+            if(e.type === 'request-access') {
+                const index = requests.value.findIndex(r => r.id === e.data.id);
+                if(index !== -1) {
+                    requests.value[index] = {
+                        ...requests.value[index],
+                        ...e.data
+                    };
+                    requests.value.splice(index, 1, requests.value[index]);
+                } else {
+                    requests.value.unshift(e.data);
+                }
+            }
+        });
+}
 
 // Lifecycle
 onMounted(() => {
     fetchRequests();
+    EventListener();
 });
 </script>
 
@@ -186,113 +199,99 @@ onMounted(() => {
 
                 <!-- Content Section -->
                 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <!-- Empty State -->
-                    <div v-if="!filterRequests.length" class="text-center py-16 bg-white rounded-lg shadow-sm border border-gray-200">
-                        <div class="max-w-md mx-auto px-4">
-                            <svg class="mx-auto h-12 w-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                            <h3 class="text-base font-medium text-gray-900 mb-1">No requests found</h3>
-                            <p class="text-sm text-gray-500 mb-4">Try adjusting your search or filter criteria</p>
-                        </div>
-                    </div>
-
                     <!-- Table -->
-                    <div v-else class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50">
-                                    <tr>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID Number</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Full Name</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Requested</th>
-                                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="bg-white divide-y divide-gray-200">
-                                    <tr
-                                        v-for="request in filterRequests"
-                                        :key="request.id"
-                                        class="hover:bg-gray-50 transition-colors"
-                                    >
-                                        <td class="px-4 py-3 whitespace-nowrap">
-                                            <div class="text-xs font-mono text-gray-600">{{ request.id }}</div>
-                                        </td>
-                                        <td class="px-4 py-3 whitespace-nowrap">
-                                            <div class="text-xs font-medium text-gray-900">{{ request.id_number || 'N/A' }}</div>
-                                        </td>
-                                        <td class="px-4 py-3 whitespace-nowrap">
-                                            <div class="text-xs font-medium text-gray-900">{{ request.fullname || 'N/A' }}</div>
-                                        </td>
-                                        <td class="px-4 py-3 whitespace-nowrap">
-                                            <a
-                                                v-if="request.email"
-                                                :href="`mailto:${request.email}`"
-                                                class="text-xs text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+                    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                        <Table
+                            :users="filterRequests"
+                            :pagination="pagination"
+                            :loading="isLoading"
+                            @view="handleView"
+                            @page-change="goToPage"
+                        >
+                            <template #header>
+                                <tr class="bg-gray-50">
+                                    <th class="px-4 py-2.5 text-xs font-medium text-gray-600 text-left">ID</th>
+                                    <th class="px-4 py-2.5 text-xs font-medium text-gray-600 text-left">ID Number</th>
+                                    <th class="px-4 py-2.5 text-xs font-medium text-gray-600 text-left">Full Name</th>
+                                    <th class="px-4 py-2.5 text-xs font-medium text-gray-600 text-left">Email</th>
+                                    <th class="px-4 py-2.5 text-xs font-medium text-gray-600 text-left">Role</th>
+                                    <th class="px-4 py-2.5 text-xs font-medium text-gray-600 text-left">Status</th>
+                                    <th class="px-4 py-2.5 text-xs font-medium text-gray-600 text-left">Requested</th>
+                                    <th class="px-4 py-2.5 text-xs font-medium text-gray-600 text-center">Actions</th>
+                                </tr>
+                            </template>
+                            <template #default>
+                                <tr v-for="request in filterRequests" :key="request.id" class="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                                    <td class="px-4 py-3 text-xs font-mono text-gray-600">{{ request.id }}</td>
+                                    <td class="px-4 py-3 text-xs font-medium text-gray-900">{{ request.id_number || 'N/A' }}</td>
+                                    <td class="px-4 py-3 text-xs font-medium text-gray-900">{{ request.fullname || 'N/A' }}</td>
+                                    <td class="px-4 py-3 text-xs">
+                                        <a
+                                            v-if="request.email"
+                                            :href="`mailto:${request.email}`"
+                                            class="text-gray-700 hover:text-gray-900 hover:underline"
+                                        >
+                                            {{ request.email }}
+                                        </a>
+                                        <span v-else class="text-gray-400">N/A</span>
+                                    </td>
+                                    <td class="px-4 py-3 text-xs">
+                                        <span 
+                                            v-if="request.role"
+                                            class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800"
+                                        >
+                                            {{ request.role }}
+                                        </span>
+                                        <span v-else class="text-gray-400">N/A</span>
+                                    </td>
+                                    <td class="px-4 py-3 text-xs">
+                                        <span 
+                                            class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border"
+                                            :class="{
+                                                'bg-green-50 text-green-700 border-green-200': request.status?.toLowerCase() === 'active',
+                                                'bg-red-50 text-red-700 border-red-200': request.status?.toLowerCase() === 'inactive',
+                                                'bg-yellow-50 text-yellow-700 border-yellow-200': request.status?.toLowerCase() === 'pending',
+                                                'bg-blue-50 text-blue-700 border-blue-200': request.status?.toLowerCase() === 'approved',
+                                                'bg-gray-100 text-gray-700 border-gray-300': request.status?.toLowerCase() === 'rejected',
+                                                'bg-orange-50 text-orange-700 border-orange-200': request.status?.toLowerCase() === 'suspended',
+                                                'bg-gray-50 text-gray-700 border-gray-200': !request.status
+                                            }"
+                                        >
+                                            {{ request.status || 'N/A' }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="text-xs text-gray-900">{{ formatDate(request.created_at) }}</div>
+                                        <div class="text-xs text-gray-500">{{ formatTime(request.created_at) }}</div>
+                                    </td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-center">
+                                        <div class="flex items-center justify-center gap-1">
+                                            <button @click="handleView(request)" class="p-1 text-gray-400 hover:text-gray-600 rounded transition">
+                                                <EyeIcon class="w-4 h-4" />
+                                            </button>
+                                            <button 
+                                                v-if="request.status?.toLowerCase() === 'pending'"
+                                                @click="approveRequest(request.id)" 
+                                                class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 rounded-md transition-colors"
+                                                title="Approve request"
                                             >
-                                                {{ request.email }}
-                                            </a>
-                                            <span v-else class="text-xs text-gray-400">N/A</span>
-                                        </td>
-                                        <td class="px-4 py-3 whitespace-nowrap">
-                                            <span 
-                                                v-if="request.role"
-                                                class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800"
+                                                <CheckCircleIcon class="w-3.5 h-3.5" />
+                                                Approve
+                                            </button>
+                                            <button 
+                                                v-if="request.status?.toLowerCase() === 'pending'"
+                                                @click="rejectRequest(request.id)" 
+                                                class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-md transition-colors"
+                                                title="Reject request"
                                             >
-                                                {{ request.role }}
-                                            </span>
-                                            <span v-else class="text-xs text-gray-400">N/A</span>
-                                        </td>
-                                        <td class="px-4 py-3 whitespace-nowrap">
-                                            <span 
-                                                :class="getStatusClass(request.status)"
-                                                class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border"
-                                            >
-                                                {{ request.status || 'N/A' }}
-                                            </span>
-                                        </td>
-                                        <td class="px-4 py-3 whitespace-nowrap">
-                                            <div class="text-xs text-gray-900">{{ formatDate(request.created_at) }}</div>
-                                            <div class="text-xs text-gray-500">{{ formatTime(request.created_at) }}</div>
-                                        </td>
-                                        <td class="px-4 py-3 whitespace-nowrap">
-                                            <div class="flex items-center justify-center gap-2">
-                                                <button 
-                                                    v-if="request.status === 'pending' || request.status === 'Pending'"
-                                                    @click="approveRequest(request.id)" 
-                                                    class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 rounded-md transition-colors"
-                                                    title="Approve request"
-                                                >
-                                                    <CheckCircleIcon class="w-3.5 h-3.5" />
-                                                    Approve
-                                                </button>
-
-                                                <button 
-                                                    v-if="request.status === 'pending' || request.status === 'Pending'"
-                                                    @click="rejectRequest(request.id)" 
-                                                    class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-md transition-colors"
-                                                    title="Reject request"
-                                                >
-                                                    <XCircleIcon class="w-3.5 h-3.5" />
-                                                    Reject
-                                                </button>
-
-                                                <span 
-                                                    v-if="request.status !== 'pending' && request.status !== 'Pending'"
-                                                    class="text-xs text-gray-400 italic"
-                                                >
-                                                    —
-                                                </span>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+                                                <XCircleIcon class="w-3.5 h-3.5" />
+                                                Reject
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </template>
+                        </Table>
                     </div>
                 </div>
             </div>

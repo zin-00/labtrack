@@ -14,11 +14,9 @@ const {
 
 const { submitRequest, resetForm } = auth
 
-// Local state for password visibility and validation
 const showPassword = ref(false)
 const passwordTouched = ref(false)
 
-// Password strength calculation
 const passwordStrength = computed(() => {
   const password = requestData.value.password || ''
   let score = 0

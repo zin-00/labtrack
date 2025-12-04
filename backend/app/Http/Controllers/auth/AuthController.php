@@ -4,10 +4,14 @@ namespace App\Http\Controllers\Auth;
 
 use App\Events\Audit\AuditEvent;
 use App\Http\Controllers\Controller;
+use App\Mail\OtpMail;
 use App\Models\Activity\AuditLogs;
+use App\Models\PasswordResetOtp;
 use App\Models\User;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 
 class AuthController extends Controller
 {
@@ -158,5 +162,169 @@ class AuthController extends Controller
             'total_logins' => $totalLogins,
             'message' => 'Login history retrieved successfully'
         ]);
+    }
+
+    /**
+     * Send OTP to email for password reset
+     */
+    public function sendResetOtp(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+        ]);
+
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user) {
+            return response()->json([
+                'message' => 'No account found with this email address.'
+            ], 404);
+        }
+
+        // Delete any existing OTPs for this email
+        PasswordResetOtp::where('email', $request->email)->delete();
+
+        // Generate 6-digit OTP
+        $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+        // Create new OTP record with 10-minute expiry
+        PasswordResetOtp::create([
+            'email' => $request->email,
+            'otp' => Hash::make($otp),
+            'expires_at' => now()->addMinutes(10),
+            'verified' => false,
+        ]);
+
+        // Send OTP via email
+        try {
+            Mail::to($request->email)->send(new OtpMail($otp, $user->name));
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to send OTP email. Please try again later.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+
+        return response()->json([
+            'message' => 'OTP has been sent to your email address.',
+            'email' => $request->email
+        ]);
+    }
+
+    /**
+     * Verify OTP code
+     */
+    public function verifyResetOtp(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'otp' => 'required|string|size:6',
+        ]);
+
+        $passwordReset = PasswordResetOtp::where('email', $request->email)
+            ->where('verified', false)
+            ->latest()
+            ->first();
+
+        if (!$passwordReset) {
+            return response()->json([
+                'message' => 'No OTP request found for this email.'
+            ], 404);
+        }
+
+        if ($passwordReset->isExpired()) {
+            $passwordReset->delete();
+            return response()->json([
+                'message' => 'OTP has expired. Please request a new one.'
+            ], 400);
+        }
+
+        if (!Hash::check($request->otp, $passwordReset->otp)) {
+            return response()->json([
+                'message' => 'Invalid OTP code.'
+            ], 400);
+        }
+
+        // Mark OTP as verified
+        $passwordReset->update(['verified' => true]);
+
+        return response()->json([
+            'message' => 'OTP verified successfully. You can now reset your password.',
+            'verified' => true
+        ]);
+    }
+
+    /**
+     * Reset password after OTP verification
+     */
+    public function resetPassword(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        // Check if OTP was verified
+        $passwordReset = PasswordResetOtp::where('email', $request->email)
+            ->where('verified', true)
+            ->latest()
+            ->first();
+
+        if (!$passwordReset) {
+            return response()->json([
+                'message' => 'Please verify your OTP first.'
+            ], 400);
+        }
+
+        // Check if the verification hasn't expired (give extra 5 minutes after verification)
+        if ($passwordReset->updated_at->addMinutes(5)->isPast()) {
+            $passwordReset->delete();
+            return response()->json([
+                'message' => 'Session expired. Please request a new OTP.'
+            ], 400);
+        }
+
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user) {
+            return response()->json([
+                'message' => 'User not found.'
+            ], 404);
+        }
+
+        // Update password
+        $user->update([
+            'password' => Hash::make($request->password)
+        ]);
+
+        // Delete the OTP record
+        $passwordReset->delete();
+
+        // Log the action
+        AuditLogs::create([
+            'user_id' => $user->id,
+            'action' => 'password_reset',
+            'entity_type' => 'User',
+            'entity_id' => $user->id,
+            'ip_address' => $request->ip(),
+            'description' => 'User reset their password',
+        ]);
+
+        return response()->json([
+            'message' => 'Password has been reset successfully. You can now login with your new password.'
+        ]);
+    }
+
+    /**
+     * Resend OTP code
+     */
+    public function resendOtp(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+        ]);
+
+        // Reuse the sendResetOtp method
+        return $this->sendResetOtp($request);
     }
 }

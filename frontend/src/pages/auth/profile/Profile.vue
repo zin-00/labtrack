@@ -1,6 +1,14 @@
 <script setup>
 import AuthenticatedLayout from '../../../layouts/auth/AuthenticatedLayout.vue';
 import Modal from '../../../components/modal/Modal.vue';
+import { 
+  ArrowRightOnRectangleIcon,
+  PencilIcon,
+  TrashIcon,
+  PlusIcon,
+  UserPlusIcon,
+  DocumentTextIcon
+} from '@heroicons/vue/24/outline';
 import { useAdminProfileStore } from '../../../composable/admin/profile/profile';
 import { useStates } from '../../../composable/states';
 import { toRefs, onMounted, ref } from 'vue';
@@ -27,11 +35,9 @@ const passwordData = ref({
   confirm: ''
 });
 
-// Login history data
-const loginHistory = ref([]);
-const lastLogin = ref(null);
-const totalLogins = ref(0);
-const isLoadingHistory = ref(false);
+// Recent activity data (audit logs)
+const recentActivity = ref([]);
+const isLoadingActivity = ref(false);
 
 // Stats data
 const stats = ref([
@@ -40,34 +46,62 @@ const stats = ref([
   { label: 'Last Login', value: 'Loading...', change: null, trend: null },
 ]);
 
-const fetchLoginHistory = async () => {
+// Get icon based on action type
+const getActionIcon = (action) => {
+  const actionLower = action?.toLowerCase() || '';
+  if (actionLower.includes('create') || actionLower.includes('add') || actionLower.includes('import')) {
+    return PlusIcon;
+  } else if (actionLower.includes('update') || actionLower.includes('edit')) {
+    return PencilIcon;
+  } else if (actionLower.includes('delete') || actionLower.includes('remove')) {
+    return TrashIcon;
+  } else if (actionLower.includes('login') || actionLower.includes('logout')) {
+    return ArrowRightOnRectangleIcon;
+  } else if (actionLower.includes('register') || actionLower.includes('approve')) {
+    return UserPlusIcon;
+  }
+  return DocumentTextIcon;
+};
+
+const fetchRecentActivity = async () => {
   try {
-    isLoadingHistory.value = true;
-    const response = await axios.get(`${api}/auth/user/login-history`, getAuthHeader());
+    isLoadingActivity.value = true;
+    const response = await axios.get(`${api}/audit-logs?per_page=5`, getAuthHeader());
     
-    // Limit to 5 entries only
-    loginHistory.value = response.data.login_history.slice(0, 5).map(log => ({
+    // Get top 5 recent audit logs
+    const logs = response.data.audit_logs?.data || response.data.audit_logs || [];
+    recentActivity.value = logs.slice(0, 5).map(log => ({
       id: log.id,
-      action: `Logged in from ${log.ip_address}`,
+      action: log.action,
+      description: log.description || `${log.action} on ${log.entity_type}`,
       time: dayjs(log.created_at).fromNow(),
       date: dayjs(log.created_at).format('MMM D, YYYY h:mm A'),
-      icon: '�',
-      type: 'authentication'
+      entityType: log.entity_type,
+      user: log.user?.name || 'System'
     }));
+      
+  } catch (error) {
+    console.error('Failed to fetch recent activity:', error);
+  } finally {
+    isLoadingActivity.value = false;
+  }
+};
+
+const fetchLoginHistory = async () => {
+  try {
+    const response = await axios.get(`${api}/auth/user/login-history`, getAuthHeader());
     
-    lastLogin.value = response.data.last_login;
-    totalLogins.value = response.data.total_logins;
+    const lastLogin = response.data.last_login;
+    const totalLogins = response.data.total_logins;
     
     // Update stats
-    stats.value[0].value = totalLogins.value.toString();
-    stats.value[2].value = lastLogin.value 
-      ? dayjs(lastLogin.value.created_at).format('MMM D, h:mm A')
+    stats.value[0].value = totalLogins?.toString() || '0';
+    stats.value[2].value = lastLogin 
+      ? dayjs(lastLogin.created_at).format('MMM D, h:mm A')
       : 'First login';
       
   } catch (error) {
     console.error('Failed to fetch login history:', error);
-  } finally {
-    isLoadingHistory.value = false;
   }
 };
 
@@ -136,101 +170,80 @@ const cancelPasswordEdit = () => {
 
 onMounted(() => {
   showAdminProfile();
+  fetchRecentActivity();
   fetchLoginHistory();
 });
 </script>
 
 <template>
   <AuthenticatedLayout>
-    <div class="py-8 max-w-7xl mx-auto sm:px-6 lg:px-8">
+    <div class="py-6 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
       <!-- Header -->
-      <div class="mb-8">
-        <div class="flex justify-between items-center">
-          <div>
-            <h1 class="text-3xl font-semibold text-gray-900">Profile</h1>
-            <p class="text-sm text-gray-500 mt-1">Manage your account settings</p>
-          </div>
-          <button 
-            @click="toggleEdit"
-            class="px-5 py-2.5 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors duration-200 text-sm font-medium shadow-sm"
-          >
-            Edit Profile
-          </button>
-        </div>
+      <div class="mb-6">
+        <h1 class="text-xl font-medium text-gray-900">Profile</h1>
+        <p class="text-sm text-gray-500 mt-0.5">Manage your account settings</p>
       </div>
 
       <!-- Main Content Grid -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <!-- Left Column - Profile Information -->
-        <div class="lg:col-span-2 space-y-6">
+        <div class="lg:col-span-2 space-y-5">
           <!-- Profile Card -->
-          <div class="bg-white shadow-sm rounded-lg border border-gray-100">
-            <div class="px-8 py-8">
+          <div class="bg-white rounded-lg border border-gray-200">
+            <div class="p-6">
               <!-- Profile Avatar Section -->
-              <div class="flex items-center mb-10">
-                <div class="w-20 h-20 bg-gradient-to-br from-gray-900 to-gray-700 rounded-full flex items-center justify-center shadow-md">
-                  <span class="text-2xl font-semibold text-white">
-                    {{ user.name ? user.name.split(' ').map(n => n[0]).join('') : '' }}
-                  </span>
-                </div>
-                <div class="ml-6">
-                  <h3 class="text-xl font-semibold text-gray-900">{{ user.name }}</h3>
-                  <p class="text-sm text-gray-500 mt-0.5">{{ user.roles }}</p>
-                  <div class="flex items-center mt-3">
-                    <span 
-                      class="inline-flex px-3 py-1 text-xs font-medium rounded-full"
-                      :class="{
-                        'bg-green-50 text-green-700 border border-green-200': user.status === 'Active',
-                        'bg-gray-50 text-gray-600 border border-gray-200': user.status === 'Inactive',
-                        'bg-red-50 text-red-700 border border-red-200': user.status === 'Suspended'
-                      }"
-                    >
-                      {{ user.status }}
+              <div class="flex items-center justify-between mb-6">
+                <div class="flex items-center gap-4">
+                  <div class="w-14 h-14 bg-gray-900 rounded-full flex items-center justify-center">
+                    <span class="text-lg font-medium text-white">
+                      {{ user.name ? user.name.split(' ').map(n => n[0]).join('') : '' }}
                     </span>
                   </div>
+                  <div>
+                    <h3 class="text-base font-medium text-gray-900">{{ user.name }}</h3>
+                    <div class="flex items-center gap-2 mt-1">
+                      <span class="text-sm text-gray-500">{{ user.roles }}</span>
+                      <span class="text-gray-300">•</span>
+                      <span 
+                        class="inline-flex px-2 py-0.5 text-xs font-medium rounded-full"
+                        :class="{
+                          'bg-green-50 text-green-700': user.status === 'Active',
+                          'bg-gray-100 text-gray-600': user.status === 'Inactive',
+                          'bg-red-50 text-red-700': user.status === 'Suspended'
+                        }"
+                      >
+                        {{ user.status }}
+                      </span>
+                    </div>
+                  </div>
                 </div>
+                <button 
+                  @click="toggleEdit"
+                  class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Edit
+                </button>
               </div>
 
               <!-- Profile Details Grid -->
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <!-- Name Field -->
+              <div class="grid grid-cols-2 gap-4">
                 <div>
-                  <label class="block text-xs font-medium text-gray-500 mb-2 uppercase tracking-wider">
-                    Full Name
-                  </label>
-                  <div class="px-4 py-3 bg-gray-50 rounded-lg text-sm text-gray-900">
-                    {{ user.name || 'Not provided' }}
-                  </div>
+                  <label class="block text-xs text-gray-500 mb-1">Full Name</label>
+                  <p class="text-sm text-gray-900">{{ user.name || 'Not provided' }}</p>
                 </div>
-
-                <!-- Email Field -->
                 <div>
-                  <label class="block text-xs font-medium text-gray-500 mb-2 uppercase tracking-wider">
-                    Email Address
-                  </label>
-                  <div class="px-4 py-3 bg-gray-50 rounded-lg text-sm text-gray-900">
-                    {{ user.email }}
-                  </div>
+                  <label class="block text-xs text-gray-500 mb-1">Email</label>
+                  <p class="text-sm text-gray-900">{{ user.email }}</p>
                 </div>
-
-                <!-- Role Field -->
                 <div>
-                  <label class="block text-xs font-medium text-gray-500 mb-2 uppercase tracking-wider">
-                    Role
-                  </label>
-                  <div class="px-4 py-3 bg-gray-50 rounded-lg text-sm text-gray-900">
-                    {{ user.roles }}
-                  </div>
+                  <label class="block text-xs text-gray-500 mb-1">Role</label>
+                  <p class="text-sm text-gray-900">{{ user.roles }}</p>
                 </div>
-
-                <!-- Password Field -->
                 <div>
-                  <label class="block text-xs font-medium text-gray-500 mb-2 uppercase tracking-wider">
-                    Password
-                  </label>
-                  <div class="px-4 py-3 bg-gray-50 rounded-lg text-sm text-gray-900 flex justify-between items-center">
-                    <span>••••••••••</span>
-                    <button @click="togglePasswordEdit" class="text-xs text-gray-600 hover:text-gray-900 font-medium">
+                  <label class="block text-xs text-gray-500 mb-1">Password</label>
+                  <div class="flex items-center gap-2">
+                    <p class="text-sm text-gray-900">••••••••</p>
+                    <button @click="togglePasswordEdit" class="text-xs text-gray-500 hover:text-gray-700 underline">
                       Change
                     </button>
                   </div>
@@ -240,13 +253,15 @@ onMounted(() => {
           </div>
 
           <!-- Stats Section -->
-          <div class="bg-white shadow-sm rounded-lg border border-gray-100">
-            <div class="px-8 py-6">
-              <h2 class="text-base font-semibold text-gray-900 mb-5">Account Overview</h2>
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div v-for="stat in stats" :key="stat.label" class="bg-gray-50 p-5 rounded-lg border border-gray-100">
-                  <p class="text-xs text-gray-500 uppercase tracking-wider font-medium">{{ stat.label }}</p>
-                  <p class="text-2xl font-semibold text-gray-900 mt-2">{{ stat.value }}</p>
+          <div class="bg-white rounded-lg border border-gray-200">
+            <div class="px-6 py-4 border-b border-gray-100">
+              <h2 class="text-sm font-medium text-gray-900">Account Overview</h2>
+            </div>
+            <div class="p-6">
+              <div class="grid grid-cols-3 gap-4">
+                <div v-for="stat in stats" :key="stat.label" class="text-center p-4 bg-gray-50 rounded-lg">
+                  <p class="text-xl font-semibold text-gray-900">{{ stat.value }}</p>
+                  <p class="text-xs text-gray-500 mt-1">{{ stat.label }}</p>
                 </div>
               </div>
             </div>
@@ -254,21 +269,25 @@ onMounted(() => {
         </div>
 
         <!-- Right Column - Recent Activity -->
-        <div class="space-y-6">
-          <!-- Activities Card -->
-          <div class="bg-white shadow-sm rounded-lg border border-gray-100">
-            <div class="px-6 py-5">
-              <h2 class="text-sm font-semibold text-gray-900 mb-4">Recent Activity</h2>
-              <div v-if="isLoadingHistory" class="text-center py-8">
+        <div>
+          <div class="bg-white rounded-lg border border-gray-200">
+            <div class="px-5 py-4 border-b border-gray-100">
+              <h2 class="text-sm font-medium text-gray-900">Recent Activity</h2>
+            </div>
+            <div class="p-4">
+              <div v-if="isLoadingActivity" class="text-center py-8">
                 <p class="text-xs text-gray-400">Loading...</p>
               </div>
-              <div v-else-if="loginHistory.length > 0" class="space-y-2">
-                <div v-for="activity in loginHistory" :key="activity.id" 
-                     class="flex items-start p-2.5 rounded-md bg-gray-50">
-                  <div class="flex-shrink-0 mr-2 text-sm">{{ activity.icon }}</div>
+              <div v-else-if="recentActivity.length > 0" class="space-y-2">
+                <div v-for="activity in recentActivity" :key="activity.id" 
+                     class="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                  <div class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <component :is="getActionIcon(activity.action)" class="w-4 h-4 text-gray-500" />
+                  </div>
                   <div class="flex-1 min-w-0">
                     <p class="text-xs font-medium text-gray-900 truncate">{{ activity.action }}</p>
-                    <p class="text-xs text-gray-500 mt-0.5">{{ activity.time }}</p>
+                    <p class="text-xs text-gray-500 truncate">{{ activity.description }}</p>
+                    <p class="text-xs text-gray-400 mt-0.5">{{ activity.time }}</p>
                   </div>
                 </div>
               </div>

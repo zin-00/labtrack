@@ -24,6 +24,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('auth/logout', [AuthController::class, 'logout'])->name('auth.logout');
 });
 
-    Route::post('auth/register', [AuthController::class, 'register'])->name('auth.register');
+    Route::post('/auth/register', [AuthController::class, 'register'])->name('auth.register');
     Route::post('auth/login', [AuthController::class, 'login'])->name('auth.login');
     Route::post('auth/check-email', [AuthController::class, 'isEmailExist']);
+
+    // Password Reset Routes
+    Route::post('auth/forgot-password/send-otp', [AuthController::class, 'sendResetOtp']);
+    Route::post('auth/forgot-password/verify-otp', [AuthController::class, 'verifyResetOtp']);
+    Route::post('auth/forgot-password/reset', [AuthController::class, 'resetPassword']);
+    Route::post('auth/forgot-password/resend-otp', [AuthController::class, 'resendOtp']);
