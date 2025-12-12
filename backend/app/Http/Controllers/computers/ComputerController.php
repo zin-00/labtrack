@@ -365,7 +365,8 @@ class ComputerController extends Controller
         }
 
         // event(new ComputerUnlockRequested($computer->id, $student->id));
-        ComputerStatusUpdated::dispatch($computer->id);
+        broadcast(new MainEvent('computer', 'unlock', $computer));
+        ComputerStatusUpdated::dispatch($computer);
         ComputerUnlockRequested::dispatch($computer, $request->input('rfid_uid'));
 
         return response()->json([
@@ -524,42 +525,131 @@ public function isOffline(Request $request, $ip)
     }
 
     public function register_computer(Request $request)
-    {
-        $data = $request->validate([
-            'computer_number' => ['required', 'string', 'max:255'],
-            'ip_address' => ['required', 'string', 'max:255', 'unique:computers,ip_address'],
-            'mac_address' => ['required', 'string', 'max:255', 'unique:computers,mac_address'],
-            'status' => ['required', 'in:active,inactive,maintenance'],
-            'is_lock' => ['required', 'boolean'],
-            'is_online' => ['required', 'boolean'],
-        ]);
+{
+    $data = $request->validate([
+        'computer_number' => ['required', 'string', 'max:255'],
+        'ip_address' => ['required', 'string', 'max:255'],
+        'mac_address' => ['required', 'string', 'max:255'],
+        'status' => ['required', 'in:active,inactive,maintenance'],
+        'is_lock' => ['required', 'boolean'],
+        'is_online' => ['required', 'boolean'],
+    ]);
 
-        // Check if computer already exists by IP or MAC
-        $existing = Computer::where('ip_address', $data['ip_address'])
-            ->orWhere('mac_address', $data['mac_address'])
-            ->first();
+    // Find existing computer by IP or MAC
+    $computer = Computer::Where('mac_address', $data['mac_address'])->first();
 
-        if ($existing) {
-            broadcast(new ComputerEvent($existing, 'update'));
-
-            return response()->json([
-                'message' => 'Computer already registered',
-                'computer' => $existing,
-            ], 200);
-        }
-
-        // Create new computer
-        $computer = Computer::create($data);
-
-        // ComputerStatusUpdated::dispatch($computer);
-
-        broadcast(new ComputerEvent($computer, 'add'));
+    if ($computer) {
+        // Update existing computer
+        $computer->update($data);
+        broadcast(new MainEvent('computer', 'update', $computer));
 
         return response()->json([
-            'message' => 'Computer registered successfully',
+            'message' => 'Computer updated successfully',
             'computer' => $computer,
-        ], 201);
+        ], 200);
     }
+
+    // Create new computer if it doesn't exist
+    $computer = Computer::create($data);
+
+    // broadcast(new ComputerEvent($computer, 'add'));
+    broadcast(new MainEvent('computer', 'add', $computer));
+
+    return response()->json([
+        'message' => 'Computer registered successfully',
+        'computer' => $computer,
+    ], 201);
+}
+
+public function lockByMac(Request $request)
+{
+    // Validate that "mac_addresses" is provided as an array
+    $validated = $request->validate([
+        'mac_addresses' => 'required|array|min:1',
+        'mac_addresses.*' => 'string'
+    ]);
+
+    $macAddresses = $validated['mac_addresses'];
+
+    // Get all matching computers
+    $computers = Computer::whereIn('mac_address', $macAddresses)->get();
+
+    if ($computers->isEmpty()) {
+        return response()->json([
+            'message' => 'No computers found with the provided MAC addresses.'
+        ], 404);
+    }
+
+    $lockedCount = 0;
+
+    foreach ($computers as $computer) {
+        if (!$computer->is_lock) {
+            $computer->is_lock = true;
+            $computer->save();
+
+            // Update the end_time for active computer logs
+            ComputerLog::where('computer_id', $computer->id)
+                ->whereNull('end_time')
+                ->update(['end_time' => Carbon::now()]);
+
+            // Broadcast lock event for each locked computer
+            broadcast(new MainEvent('computer', 'lock', $computer));
+
+            $lockedCount++;
+        }
+    }
+
+    return response()->json([
+        'message' => $lockedCount > 0
+            ? "Successfully locked {$lockedCount} computer(s)."
+            : 'All selected computers were already locked.',
+        'computers' => $computers,
+        'locked_count' => $lockedCount
+    ]);
+}
+
+public function unlockByMac(Request $request)
+{
+    // Validate that "mac_addresses" is provided as an array
+    $validated = $request->validate([
+        'mac_addresses' => 'required|array|min:1',
+        'mac_addresses.*' => 'string'
+    ]);
+
+    $macAddresses = $validated['mac_addresses'];
+
+    // Get all matching computers
+    $computers = Computer::whereIn('mac_address', $macAddresses)->get();
+
+    if ($computers->isEmpty()) {
+        return response()->json([
+            'message' => 'No computers found with the provided MAC addresses.'
+        ], 404);
+    }
+
+    $unlockedCount = 0;
+
+    foreach ($computers as $computer) {
+        if ($computer->is_lock && $computer->is_online) {
+            $computer->is_lock = false;
+            $computer->save();
+
+            // Broadcast unlock event for each unlocked computer
+            broadcast(new MainEvent('computer', 'unlock', $computer));
+
+            $unlockedCount++;
+        }
+    }
+
+    return response()->json([
+        'message' => $unlockedCount > 0
+            ? "Successfully unlocked {$unlockedCount} computer(s)."
+            : 'No computers were unlocked. They may already be unlocked or offline.',
+        'computers' => $computers,
+        'unlocked_count' => $unlockedCount
+    ]);
+}
+
 
 public function unlockAssignedComputer(Request $request){
     $request->validate([

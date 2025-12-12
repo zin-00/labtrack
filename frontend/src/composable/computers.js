@@ -248,6 +248,44 @@ const unlockComputersByLab = async (labId, rfid_uid) => {
   }
 }
 
+const lockComputers = async (macAddresses) => {
+  try {
+    isLoading.value = true;
+    const response = await axios.post(
+      `${api}/computers/lock`,
+      { mac_addresses: macAddresses },
+      getAuthHeader()
+    );
+    toast.success('Success', response.data.message || 'Computers locked successfully!');
+    return response.data.computers || [];
+  } catch (err) {
+    toast.error('Error', err.response?.data?.message || 'Failed to lock computers.');
+    console.error('Error locking computers:', err);
+    return [];
+  } finally {
+    isLoading.value = false;
+  }
+}
+
+const unlockComputersBulk = async (macAddresses) => {
+  try {
+    isLoading.value = true;
+    const response = await axios.post(
+      `${api}/computers/unlock-bulk`,
+      { mac_addresses: macAddresses },
+      getAuthHeader()
+    );
+    toast.success('Success', response.data.message || 'Computers unlocked successfully!');
+    return response.data.computers || [];
+  } catch (err) {
+    toast.error('Error', err.response?.data?.message || 'Failed to unlock computers.');
+    console.error('Error unlocking computers:', err);
+    return [];
+  } finally {
+    isLoading.value = false;
+  }
+}
+
 
   return {
     // State
@@ -276,6 +314,8 @@ const unlockComputersByLab = async (labId, rfid_uid) => {
     handleComputerEvent,
     unlockComputersByLab,
     unlockByAdmin,
-    fetchAllComputers
+    fetchAllComputers,
+    lockComputers,
+    unlockComputersBulk
   };
 });

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Events\Audit\AuditEvent;
 use App\Events\ComputerStatusUpdated;
 use App\Events\ComputerUnlockRequested;
+use App\Events\MainEvent;
 use App\Http\Controllers\Controller;
 use App\Models\Activity\AuditLogs;
 use App\Models\Computer;
@@ -188,7 +189,8 @@ public function update(Request $request, $id){
 
         //Dispatch events
         AuditEvent::dispatch($audit_log);
-        ComputerStatusUpdated::dispatch($computer->id, null);
+        broadcast(new MainEvent('computer', 'unlock', $computer));
+        ComputerStatusUpdated::dispatch($computer);
         ComputerUnlockRequested::dispatch($computer, null);
 
         return response()->json([

@@ -30,7 +30,7 @@ class ComputerUnlockRequested implements ShouldBroadcast, ShouldQueue
     {
         return [
             new Channel('computer'),
-            new Channel('computer-status.' . $this->computer->ip_address), // Also broadcast to IP-specific channel
+            new Channel('computer-status.' . $this->computer->ip_address),
         ];
     }
 

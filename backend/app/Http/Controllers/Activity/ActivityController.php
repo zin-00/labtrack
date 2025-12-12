@@ -48,9 +48,8 @@ public function store(Request $request)
     // Look up student by rfid_uid
     $studentId = null;
     if (!empty($data['rfid_uid'])) {
-        Log::info('Looking up student with RFID: ' . $data['rfid_uid']); // ← Add this log
 
-        $student = \App\Models\Student::where('rfid_uid', $data['rfid_uid'])->first();
+        $student =Student::where('rfid_uid', $data['rfid_uid'])->first();
 
         if ($student) {
             $studentId = $student->student_id;

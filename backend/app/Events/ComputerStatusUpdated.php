@@ -31,8 +31,10 @@ class ComputerStatusUpdated implements ShouldBroadcast, ShouldQueue
      */
         public function broadcastOn()
         {
-            return new Channel('computer-status');
-            return new Channel('computer-status.' . $this->computer->ip_address);
+            return [
+                new Channel('computer-status'),
+                new Channel('computer-status.' . $this->computer->ip_address),
+            ];
         }
 
         public function broadcastWith()

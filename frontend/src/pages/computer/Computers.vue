@@ -9,7 +9,7 @@ import Modal from '../../components/modal/Modal.vue';
 import StudentAssignmentModal from '../../components/modal/StudentAssignmentModal.vue';
 import { useComputerStore} from '../../composable/computers';
 import { useStates } from '../../composable/states';
-import { XIcon, TrashIcon } from 'lucide-vue-next';
+import { XIcon, TrashIcon, LockIcon, UnlockIcon } from 'lucide-vue-next';
 import LoaderSpinner from '../../components/spinner/LoaderSpinner.vue';
 import { debounce } from 'lodash-es';
 const toast = useToast();
@@ -52,6 +52,12 @@ const {
 const showDeleteModal = ref(false);
 const computerToDelete = ref(null);
 
+// Lock modal state
+const showLockModal = ref(false);
+const showUnlockModal = ref(false);
+const isSelectionMode = ref(false);
+const selectedComputers = ref([]);
+
 const {
     fetchComputers,
     fetchLabs,
@@ -59,8 +65,170 @@ const {
     updateComputer,
     deleteComputer,
     unlockComputer,
-    unlockByAdmin
+    unlockByAdmin,
+    lockComputers,
+    unlockComputersBulk
       } = func;
+
+// Toggle selection mode
+const toggleSelectionMode = () => {
+  isSelectionMode.value = !isSelectionMode.value;
+  if (!isSelectionMode.value) {
+    selectedComputers.value = [];
+  }
+};
+
+// Toggle computer selection
+const toggleComputerSelection = (computer) => {
+  const index = selectedComputers.value.findIndex(c => c.id === computer.id);
+  if (index === -1) {
+    selectedComputers.value.push(computer);
+  } else {
+    selectedComputers.value.splice(index, 1);
+  }
+};
+
+// Check if computer is selected
+const isComputerSelected = (computer) => {
+  return selectedComputers.value.some(c => c.id === computer.id);
+};
+
+// Select all unlocked computers
+const selectAllUnlocked = () => {
+  selectedComputers.value = computers.value.filter(c => !c.is_lock && c.mac_address);
+};
+
+// Clear selection
+const clearSelection = () => {
+  selectedComputers.value = [];
+};
+
+// Open lock modal
+const openLockModal = () => {
+  showLockModal.value = true;
+};
+
+// Close lock modal
+const closeLockModal = () => {
+  showLockModal.value = false;
+};
+
+// Lock selected computers
+const lockSelectedComputers = async () => {
+  if (selectedComputers.value.length === 0) {
+    toast.warning('Warning', 'Please select at least one computer to lock.');
+    return;
+  }
+
+  const macAddresses = selectedComputers.value
+    .filter(c => c.mac_address)
+    .map(c => c.mac_address);
+
+  if (macAddresses.length === 0) {
+    toast.error('Error', 'Selected computers do not have MAC addresses.');
+    return;
+  }
+
+  await lockComputers(macAddresses);
+  closeLockModal();
+  selectedComputers.value = [];
+  isSelectionMode.value = false;
+  applyFilters();
+};
+
+// Get current lab name
+const currentLabName = computed(() => {
+  if (selectedLab.value === 'all' || !func.labs) return null;
+  const lab = func.labs.find(l => l.id === selectedLab.value);
+  return lab ? lab.name : null;
+});
+
+// Get unlocked computers count for current filter
+const unlockedComputersInView = computed(() => {
+  return computers.value.filter(c => !c.is_lock && c.mac_address);
+});
+
+// Get locked & online computers count for current filter
+const lockedOnlineComputersInView = computed(() => {
+  return computers.value.filter(c => c.is_lock && c.is_online && c.mac_address);
+});
+
+// Lock all unlocked computers in current view (respects lab filter)
+const lockAllComputers = async () => {
+  const unlockedComputers = unlockedComputersInView.value;
+  
+  if (unlockedComputers.length === 0) {
+    toast.info('Info', 'All computers are already locked.');
+    closeLockModal();
+    return;
+  }
+
+  const macAddresses = unlockedComputers.map(c => c.mac_address);
+  await lockComputers(macAddresses);
+  closeLockModal();
+  applyFilters();
+};
+
+// Open unlock modal
+const openUnlockModal = () => {
+  showUnlockModal.value = true;
+};
+
+// Close unlock modal
+const closeUnlockModal = () => {
+  showUnlockModal.value = false;
+};
+
+// Unlock all locked computers in current view (respects lab filter)
+const unlockAllComputers = async () => {
+  const lockedComputers = lockedOnlineComputersInView.value;
+  
+  if (lockedComputers.length === 0) {
+    toast.info('Info', 'No locked online computers to unlock.');
+    closeUnlockModal();
+    return;
+  }
+
+  const macAddresses = lockedComputers.map(c => c.mac_address);
+  await unlockComputersBulk(macAddresses);
+  closeUnlockModal();
+  applyFilters();
+};
+
+// Unlock selected computers
+const unlockSelectedComputers = async () => {
+  if (selectedComputers.value.length === 0) {
+    toast.warning('Warning', 'Please select at least one computer to unlock.');
+    return;
+  }
+
+  const macAddresses = selectedComputers.value
+    .filter(c => c.mac_address && c.is_lock && c.is_online)
+    .map(c => c.mac_address);
+
+  if (macAddresses.length === 0) {
+    toast.error('Error', 'Selected computers are not locked or are offline.');
+    return;
+  }
+
+  await unlockComputersBulk(macAddresses);
+  closeUnlockModal();
+  selectedComputers.value = [];
+  isSelectionMode.value = false;
+  applyFilters();
+};
+
+// Lock single computer
+const lockSingleComputer = async (computer) => {
+  if (!computer.mac_address) {
+    toast.error('Error', 'Computer does not have a MAC address.');
+    return;
+  }
+  
+  await lockComputers([computer.mac_address]);
+  isDropdownOpen.value = null;
+  applyFilters();
+};
 
 // Open assignment modal
 const openAssignmentModal = (computer) => {
@@ -255,7 +423,7 @@ const EventListener = () => {
 
   window.Echo.channel('main-channel')
     .listen('.MainEvent', (e) => {
-      if(e.type === 'Computer'){
+      if(e.type === 'computer'){
         const index = computers.value.findIndex(c => c.id === e.data.id);
         // alert("Computer main event received:", e.data);
         if (index !== -1) {
@@ -316,31 +484,31 @@ watch(modalState, async (newVal) => {
       </div>
 
       <!-- Filters + Add -->
-      <div class="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-end mb-6 mt-5">
-        <!-- Filters -->
-        <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-end flex-1">
-
+      <div class="flex flex-col gap-4 mb-6 mt-5">
+        <!-- Filters Row -->
+        <div class="flex flex-col sm:flex-row gap-3 flex-wrap">
           <!-- Search Filter-->
-            <div class="relative">
-              <input
-                  v-model="searchQuery"
-                  type="text"
-                  placeholder="Search globally..."
-                  class="w-64 border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
-              >
-              <button
-                  v-if="searchQuery"
-                  @click="searchQuery = ''"
-                  class="absolute right-2 top-2 text-gray-400 hover:text-gray-600"
-              >
-                  <XIcon :stroke-width="1.50" class="w-4 h-4" />
-              </button>
+          <div class="relative flex-1 min-w-[200px] max-w-xs">
+            <input
+                v-model="searchQuery"
+                type="text"
+                placeholder="Search globally..."
+                class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:border-gray-500 focus:ring-1 focus:ring-gray-400 transition"
+            >
+            <button
+                v-if="searchQuery"
+                @click="searchQuery = ''"
+                class="absolute right-2 top-2.5 text-gray-400 hover:text-gray-600"
+            >
+                <XIcon :stroke-width="1.50" class="w-4 h-4" />
+            </button>
           </div>
+
           <!-- Lab -->
-          <div class="w-full sm:w-auto min-w-[200px]">
+          <div class="min-w-[160px] sm:min-w-[180px]">
             <select
               v-model="selectedLab"
-              class="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:border-gray-500 focus:ring-1 focus:ring-gray-400 transition bg-white"
             >
               <option value="all">All Laboratories</option>
               <option v-for="lab in func.labs || []" :key="lab.id" :value="lab.id">
@@ -350,10 +518,10 @@ watch(modalState, async (newVal) => {
           </div>
 
           <!-- Status -->
-          <div class="w-full sm:w-auto min-w-[160px]">
+          <div class="min-w-[140px] sm:min-w-[160px]">
             <select
               v-model="selectedStatus"
-              class="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:border-gray-500 focus:ring-1 focus:ring-gray-400 transition bg-white"
             >
               <option value="all">All Status</option>
               <option value="active">Active</option>
@@ -363,23 +531,92 @@ watch(modalState, async (newVal) => {
           </div>
 
           <!-- Clear Filters -->
-          <div class="w-ful sm-w-auto min-w-auto">
-            <button
-              @click="clearFilters"
-              class="px-3 py-2 text-xs text-gray-600 hover:text-gray-800 transition-colors">
-              Clear Filters
-            </button>
-          </div>
+          <button
+            @click="clearFilters"
+            class="px-3 py-2 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors whitespace-nowrap"
+          >
+            Clear Filters
+          </button>
         </div>
 
-        <!-- Add -->
-        <div class="w-full sm:w-auto">
+        <!-- Action Buttons Row -->
+        <div class="flex flex-wrap gap-2">
+          <!-- Lock Button -->
+          <button
+            @click="openLockModal"
+            class="flex-1 sm:flex-none px-4 py-2 bg-gray-900 text-white rounded-md hover:bg-gray-800 transition flex items-center justify-center gap-2 text-sm font-medium"
+          >
+            <LockIcon class="w-4 h-4" />
+            <span>Lock</span>
+          </button>
+
+          <!-- Unlock Button -->
+          <button
+            @click="openUnlockModal"
+            class="flex-1 sm:flex-none px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition flex items-center justify-center gap-2 text-sm font-medium"
+          >
+            <UnlockIcon class="w-4 h-4" />
+            <span>Unlock</span>
+          </button>
+
+          <!-- Selection Mode Toggle -->
+          <button
+            @click="toggleSelectionMode"
+            :class="isSelectionMode 
+              ? 'bg-gray-700 text-white hover:bg-gray-600' 
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'"
+            class="flex-1 sm:flex-none px-4 py-2 rounded-md transition flex items-center justify-center gap-2 text-sm font-medium"
+          >
+            <span>{{ isSelectionMode ? 'Cancel' : 'Select' }}</span>
+          </button>
+
+          <!-- Add Computer -->
           <button
             @click="openAddComputerModal"
-            class="w-full sm:w-auto px-4 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-600 transition flex items-center justify-center gap-2 text-sm"
+            class="flex-1 sm:flex-none px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-500 transition flex items-center justify-center gap-2 text-sm font-medium"
           >
-           
-            <span>Add Computer</span>
+            <span>+ Add</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Selection Bar (shown when in selection mode) -->
+      <div 
+        v-if="isSelectionMode"
+        class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 mb-4"
+      >
+        <div class="flex flex-wrap items-center gap-2 sm:gap-4">
+          <span class="text-sm text-gray-800 font-medium">
+            {{ selectedComputers.length }} selected
+          </span>
+          <button
+            @click="selectAllUnlocked"
+            class="text-sm text-gray-600 hover:text-gray-900 underline"
+          >
+            Select all unlocked
+          </button>
+          <button
+            v-if="selectedComputers.length > 0"
+            @click="clearSelection"
+            class="text-sm text-gray-500 hover:text-gray-700"
+          >
+            Clear
+          </button>
+        </div>
+        <div v-if="selectedComputers.length > 0" class="flex gap-2 w-full sm:w-auto">
+          <button
+            @click="lockSelectedComputers"
+            class="flex-1 sm:flex-none px-4 py-2 bg-gray-900 text-white rounded-md hover:bg-gray-800 transition flex items-center justify-center gap-2 text-sm font-medium"
+          >
+            <LockIcon class="w-4 h-4" />
+            <span class="hidden sm:inline">Lock</span> ({{ selectedComputers.length }})
+          </button>
+          <button
+            @click="unlockSelectedComputers"
+            class="flex-1 sm:flex-none px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition flex items-center justify-center gap-2 text-sm font-medium"
+          >
+            <UnlockIcon class="w-4 h-4" />
+            <span class="hidden sm:inline">Unlock</span> ({{ selectedComputers.length }})
           </button>
         </div>
       </div>
@@ -394,8 +631,22 @@ watch(modalState, async (newVal) => {
           :key="computer.id"
           class="relative group"
         >
+          <!-- Selection Checkbox (shown in selection mode) -->
+          <div 
+            v-if="isSelectionMode && !computer.is_lock"
+            class="absolute top-3 left-3 z-20"
+          >
+            <input
+              type="checkbox"
+              :checked="isComputerSelected(computer)"
+              @change="toggleComputerSelection(computer)"
+              class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+            />
+          </div>
+
           <!-- Menu -->
           <button
+            v-if="!isSelectionMode"
             @click.stop="toggleDropdown(computer.id)"
             class="absolute top-3 right-3 p-1.5 hover:bg-gray-100 rounded-md text-gray-400 hover:text-gray-700 transition-colors opacity-0 group-hover:opacity-100 z-20"
           >
@@ -403,7 +654,7 @@ watch(modalState, async (newVal) => {
           </button>
 
           <div
-            v-if="isDropdownOpen === computer.id"
+            v-if="isDropdownOpen === computer.id && !isSelectionMode"
             class="absolute right-0 top-10 w-40 bg-white rounded-lg shadow-xl border border-gray-200 z-30 py-1 text-sm"
           >
             <button @click.stop="openAssignmentModal(computer)" class="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors">
@@ -417,6 +668,13 @@ watch(modalState, async (newVal) => {
             >
               Unlock directly
             </button>
+            <button 
+              v-if="!computer.is_lock"
+              @click.stop="lockSingleComputer(computer)" 
+              class="block w-full text-left px-4 py-2 text-orange-600 hover:bg-orange-50 transition-colors"
+            >
+              Lock
+            </button>
             <button @click.stop="editComputer(computer)" class="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors">
               Edit
             </button>
@@ -425,10 +683,15 @@ watch(modalState, async (newVal) => {
             </button>
           </div>
 
-          <!-- Computer Card - Click to assign students -->
+          <!-- Computer Card - Click to assign students or select -->
           <button
-            @click="openAssignmentModal(computer)"
-            class="w-full p-3 bg-white border-2 border-gray-200 rounded-lg hover:border-gray-400 hover:shadow-lg transition-all duration-200 text-left"
+            @click="isSelectionMode && !computer.is_lock ? toggleComputerSelection(computer) : openAssignmentModal(computer)"
+            class="w-full p-3 bg-white border-2 rounded-lg hover:shadow-lg transition-all duration-200 text-left"
+            :class="{
+              'border-blue-500 bg-blue-50': isSelectionMode && isComputerSelected(computer),
+              'border-gray-200 hover:border-gray-400': !isSelectionMode || !isComputerSelected(computer),
+              'pl-10': isSelectionMode && !computer.is_lock
+            }"
           >
             <div class="flex items-center justify-between mb-2">
               <span class="text-lg font-bold text-gray-900 group-hover:text-gray-700 transition-colors">
@@ -812,6 +1075,156 @@ watch(modalState, async (newVal) => {
               class="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-gray-900 rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 transition-colors"
             >
               Delete Computer
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <!-- Lock Computers Modal -->
+      <Modal :show="showLockModal" @close="closeLockModal" max-width="md">
+        <div class="relative bg-white p-6 rounded-lg">
+          <!-- Icon -->
+          <div class="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-gray-100 rounded-full">
+            <LockIcon class="w-6 h-6 text-gray-700" />
+          </div>
+
+          <!-- Modal header -->
+          <div class="text-center mb-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">
+              Lock Computers
+            </h3>
+            <p class="text-sm text-gray-600">
+              Choose how you want to lock computers. This will prevent students from using them until unlocked.
+            </p>
+          </div>
+
+          <!-- Current Filter Info -->
+          <div v-if="currentLabName" class="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4">
+            <p class="text-sm text-gray-700 font-medium text-center">
+              Showing computers in: <span class="font-bold">{{ currentLabName }}</span>
+            </p>
+          </div>
+
+          <!-- Stats -->
+          <div class="bg-gray-50 rounded-lg p-4 mb-6">
+            <div class="grid grid-cols-2 gap-4 text-center">
+              <div>
+                <p class="text-2xl font-bold text-gray-900">{{ unlockedComputersInView.length }}</p>
+                <p class="text-xs text-gray-500">Unlocked</p>
+              </div>
+              <div>
+                <p class="text-2xl font-bold text-gray-600">{{ computers.filter(c => c.is_lock).length }}</p>
+                <p class="text-xs text-gray-500">Locked</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Options -->
+          <div class="space-y-3">
+            <button
+              @click="lockAllComputers"
+              :disabled="unlockedComputersInView.length === 0"
+              class="w-full px-4 py-3 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-800 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <LockIcon class="w-4 h-4" />
+              <span v-if="currentLabName">
+                Lock All in {{ currentLabName }} ({{ unlockedComputersInView.length }})
+              </span>
+              <span v-else>
+                Lock All Unlocked ({{ unlockedComputersInView.length }})
+              </span>
+            </button>
+            
+            <button
+              @click="closeLockModal(); toggleSelectionMode()"
+              class="w-full px-4 py-3 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors border border-gray-200"
+            >
+              Select Specific Computers
+            </button>
+          </div>
+
+          <!-- Cancel -->
+          <div class="mt-4">
+            <button
+              @click="closeLockModal"
+              class="w-full px-4 py-2.5 text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <!-- Unlock Computers Modal -->
+      <Modal :show="showUnlockModal" @close="closeUnlockModal" max-width="md">
+        <div class="relative bg-white p-6 rounded-lg">
+          <!-- Icon -->
+          <div class="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-gray-100 rounded-full">
+            <UnlockIcon class="w-6 h-6 text-gray-700" />
+          </div>
+
+          <!-- Modal header -->
+          <div class="text-center mb-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">
+              Unlock Computers
+            </h3>
+            <p class="text-sm text-gray-600">
+              Choose how you want to unlock computers. Only online computers can be unlocked.
+            </p>
+          </div>
+
+          <!-- Current Filter Info -->
+          <div v-if="currentLabName" class="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4">
+            <p class="text-sm text-gray-700 font-medium text-center">
+              Showing computers in: <span class="font-bold">{{ currentLabName }}</span>
+            </p>
+          </div>
+
+          <!-- Stats -->
+          <div class="bg-gray-50 rounded-lg p-4 mb-6">
+            <div class="grid grid-cols-2 gap-4 text-center">
+              <div>
+                <p class="text-2xl font-bold text-gray-600">{{ lockedOnlineComputersInView.length }}</p>
+                <p class="text-xs text-gray-500">Locked & Online</p>
+              </div>
+              <div>
+                <p class="text-2xl font-bold text-gray-900">{{ unlockedComputersInView.length }}</p>
+                <p class="text-xs text-gray-500">Unlocked</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Options -->
+          <div class="space-y-3">
+            <button
+              @click="unlockAllComputers"
+              :disabled="lockedOnlineComputersInView.length === 0"
+              class="w-full px-4 py-3 text-sm font-medium text-white bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <UnlockIcon class="w-4 h-4" />
+              <span v-if="currentLabName">
+                Unlock All in {{ currentLabName }} ({{ lockedOnlineComputersInView.length }})
+              </span>
+              <span v-else>
+                Unlock All Online ({{ lockedOnlineComputersInView.length }})
+              </span>
+            </button>
+            
+            <button
+              @click="closeUnlockModal(); toggleSelectionMode()"
+              class="w-full px-4 py-3 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors border border-gray-200"
+            >
+              Select Specific Computers
+            </button>
+          </div>
+
+          <!-- Cancel -->
+          <div class="mt-4">
+            <button
+              @click="closeUnlockModal"
+              class="w-full px-4 py-2.5 text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              Cancel
             </button>
           </div>
         </div>

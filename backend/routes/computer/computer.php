@@ -10,6 +10,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/computers/{id}', [ComputerController::class, 'destroy']);
     Route::get('/computers/null-lab', [ComputerController::class, 'showAllComputerWithNullLabId']);
     Route::put('/computer/state/{id}', [ComputerController::class, 'unlock']);
+    Route::post('/computers/lock', [ComputerController::class, 'lockByMac']);
+    Route::post('/computers/unlock-bulk', [ComputerController::class, 'unlockByMac']);
 });
 
     Route::get('/computer/status/{ip}', [ComputerController::class, 'getStatus']);
