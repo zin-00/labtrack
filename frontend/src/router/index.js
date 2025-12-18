@@ -26,8 +26,6 @@ import Attendance from '../pages/attendance/Attendance.vue'
 import Notifications from '../pages/notifications/Notifications.vue'
 
 
-
-
 const routes = [
   { path: '',                       name: 'Home',               component: Home },
   { path: '/login',                 name: 'login',              component: LoginCloud },

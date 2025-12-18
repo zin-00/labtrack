@@ -28,8 +28,7 @@ import {
         } from '@heroicons/vue/24/outline';
 import { 
         AkDashboard,
-        LaUserTieSolid,
-        CaReportData
+        LaUserTieSolid
         } from '@kalimahapps/vue-icons';
 import { useAuthStore } from '../../composable/useAuth';
 import SideBar from '../../components/sidebar/SideBar.vue';
@@ -180,84 +179,71 @@ onUnmounted(() => {
     <div>
         <div class="min-h-screen bg-gray-100">
           <LoaderSpinner :is-loading="isLoading" subMessage="Logging out please wait..." />
-            <!-- Fixed Top Navigation -->
-            <nav class="fixed top-0 left-0 right-0 z-50 border-b border-gray-200 bg-white">
-                <div class="mx-auto px-4 sm:px-6 lg:px-8">
-                    <div class="flex h-16 justify-between items-center">
-                        <!-- Logo - Always visible -->
-                        <div class="flex items-center">
-                  <div class="w-35 h-auto rounded flex items-center justify-center">
-                <img src="../../assets/lb5.png" alt="" srcset="">
-              </div>
-                        </div>
-
-                        <!-- User Menu -->
-                        <div class="flex items-center ml-auto space-x-2">
-                            <!-- Notification Bell -->
-                            <NotificationDropdown />
-                            
-                            <div class="relative dropdown-container">
-                                <button
-                                    v-if="auth.user"
-                                    @click="toggleSettingsDropdown"
-                                    type="button"
-                                    class="inline-flex items-center rounded-md border border-transparent bg-white px-3 py-2 text-sm font-medium leading-4 text-gray-500 transition duration-150 ease-in-out hover:text-gray-700 focus:outline-none"
-                                >
-                                    <div class="flex items-center space-x-2">
-                                        <div class="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-                                            <span class="text-xs font-medium text-gray-700">
-                                                {{ auth.user.name.charAt(0).toUpperCase() }}
-                                            </span>
-                                        </div>
-                                        <span class="hidden sm:inline">{{ auth.user.name }}</span>
-                                    </div>
-                                    <svg
-                                        class="ml-2 h-4 w-4 transition-transform duration-150"
-                                        :class="{ 'rotate-180': showingSettingsDropdown }"
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        viewBox="0 0 20 20"
-                                        fill="currentColor"
-                                    >
-                                        <path
-                                            fill-rule="evenodd"
-                                            d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                                            clip-rule="evenodd"
-                                        />
-                                    </svg>
-                                </button>
-
-                                <!-- Dropdown Menu -->
-                                <Transition
-                                    enter-active-class="transition ease-out duration-200"
-                                    enter-from-class="transform opacity-0 scale-95"
-                                    enter-to-class="transform opacity-100 scale-100"
-                                    leave-active-class="transition ease-in duration-75"
-                                    leave-from-class="transform opacity-100 scale-100"
-                                    leave-to-class="transform opacity-0 scale-95"
-                                >
-                                    <div
-                                        v-show="showingSettingsDropdown"
-                                        class="absolute right-0 z-50 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
-                                    >
-                                        <button
-                                            @click="navigateToProfile"
-                                            class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition duration-150 ease-in-out"
-                                        >
-                                            Profile
-                                        </button>
-                                        <button
-                                            @click="logout_func"
-                                            class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition duration-150 ease-in-out"
-                                        >
-                                            Log Out
-                                        </button>
-                                    </div>
-                                </Transition>
+            
+            <!-- Fixed Top Right Controls (Notification & Profile) -->
+            <div class="fixed top-4 right-4 z-40 flex items-center space-x-2">
+                <!-- Notification Bell -->
+                <NotificationDropdown />
+                
+                <div class="relative dropdown-container">
+                    <button
+                        v-if="auth.user"
+                        @click="toggleSettingsDropdown"
+                        type="button"
+                        class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium leading-4 text-gray-600 transition duration-150 ease-in-out hover:text-gray-800 hover:bg-gray-50 focus:outline-none shadow-sm"
+                    >
+                        <div class="flex items-center space-x-2">
+                            <div class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+                                <span class="text-xs font-medium text-gray-700">
+                                    {{ auth.user.name.charAt(0).toUpperCase() }}
+                                </span>
                             </div>
+                            <span class="hidden sm:inline">{{ auth.user.name }}</span>
                         </div>
-                    </div>
+                        <svg
+                            class="ml-2 h-4 w-4 transition-transform duration-150"
+                            :class="{ 'rotate-180': showingSettingsDropdown }"
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                        >
+                            <path
+                                fill-rule="evenodd"
+                                d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                clip-rule="evenodd"
+                            />
+                        </svg>
+                    </button>
+
+                    <!-- Dropdown Menu -->
+                    <Transition
+                        enter-active-class="transition ease-out duration-200"
+                        enter-from-class="transform opacity-0 scale-95"
+                        enter-to-class="transform opacity-100 scale-100"
+                        leave-active-class="transition ease-in duration-75"
+                        leave-from-class="transform opacity-100 scale-100"
+                        leave-to-class="transform opacity-0 scale-95"
+                    >
+                        <div
+                            v-show="showingSettingsDropdown"
+                            class="absolute right-0 z-50 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
+                        >
+                            <button
+                                @click="navigateToProfile"
+                                class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition duration-150 ease-in-out"
+                            >
+                                Profile
+                            </button>
+                            <button
+                                @click="logout_func"
+                                class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition duration-150 ease-in-out"
+                            >
+                                Log Out
+                            </button>
+                        </div>
+                    </Transition>
                 </div>
-            </nav>
+            </div>
 
             <!-- Sidebar - Always visible with toggle -->
             <SideBar 
@@ -268,7 +254,7 @@ onUnmounted(() => {
 
             <!-- Main Content Area -->
             <div 
-                class="transition-all duration-300 ease-in-out pt-16 min-h-screen"
+                class="transition-all duration-300 ease-in-out min-h-screen"
                 :class="mainContentClasses"
             >
                 <header class="bg-white shadow" v-if="$slots.header">

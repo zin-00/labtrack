@@ -219,7 +219,7 @@ const goToLogin = () => {
           <div class="mb-10">
             <div class="flex items-center gap-2 mb-8">
               <img
-                src="/src/assets/lb5.png"
+                src="/src/assets/sfxclogov2.png"
                 alt="LabTrack"
                 class="h-17"
               />
@@ -239,7 +239,7 @@ const goToLogin = () => {
               <div 
                 class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all"
                 :class="{
-                  'bg-gray-900 text-white': currentStep >= step,
+                  'bg-green-900 text-white': currentStep >= step,
                   'bg-gray-200 text-gray-500': currentStep < step
                 }"
               >
@@ -249,7 +249,7 @@ const goToLogin = () => {
                 v-if="step < 3"
                 class="flex-1 h-1 mx-2 rounded transition-all"
                 :class="{
-                  'bg-gray-900': currentStep > step,
+                  'bg-green-900': currentStep > step,
                   'bg-gray-200': currentStep <= step
                 }"
               />
@@ -287,7 +287,7 @@ const goToLogin = () => {
                   autofocus
                   v-model="email"
                   placeholder="Enter your email address"
-                  class="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent text-sm transition-all"
+                  class="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-700 focus:border-transparent text-sm transition-all"
                 />
               </div>
             </div>
@@ -295,7 +295,7 @@ const goToLogin = () => {
             <div class="space-y-3">
               <button
                 type="submit"
-                class="w-full bg-gray-900 hover:bg-gray-800 text-white px-4 py-2.5 rounded-md font-medium text-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                class="w-full bg-green-900 hover:bg-green-800 text-white px-4 py-2.5 rounded-md font-medium text-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 :disabled="processing"
               >
                 <LoaderCircle v-if="processing" class="h-4 w-4 animate-spin" />
@@ -330,8 +330,8 @@ const goToLogin = () => {
                   :value="digit"
                   @input="handleOtpInput(index, $event)"
                   @keydown="handleOtpKeydown(index, $event)"
-                  class="w-12 h-14 text-center text-xl font-semibold border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
-                  :class="{ 'border-gray-900': digit }"
+                  class="w-12 h-14 text-center text-xl font-semibold border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-700 focus:border-transparent transition-all"
+                  :class="{ 'border-green-700': digit }"
                 />
               </div>
             </div>
@@ -342,7 +342,7 @@ const goToLogin = () => {
                 type="button"
                 @click="resendOtp"
                 :disabled="processing"
-                class="text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors disabled:opacity-50"
+                class="text-sm text-green-700 hover:text-green-800 font-medium transition-colors disabled:opacity-50"
               >
                 Resend OTP
               </button>
@@ -351,7 +351,7 @@ const goToLogin = () => {
             <div class="space-y-3">
               <button
                 type="submit"
-                class="w-full bg-gray-900 hover:bg-gray-800 text-white px-4 py-2.5 rounded-md font-medium text-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                class="w-full bg-green-900 hover:bg-green-800 text-white px-4 py-2.5 rounded-md font-medium text-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 :disabled="processing || otp.length !== 6"
               >
                 <LoaderCircle v-if="processing" class="h-4 w-4 animate-spin" />
@@ -383,7 +383,7 @@ const goToLogin = () => {
                   required
                   v-model="password"
                   placeholder="Enter new password"
-                  class="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent text-sm transition-all"
+                  class="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-700 focus:border-transparent text-sm transition-all"
                 />
                 <button
                   type="button"
@@ -409,7 +409,7 @@ const goToLogin = () => {
                   required
                   v-model="passwordConfirmation"
                   placeholder="Confirm new password"
-                  class="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent text-sm transition-all"
+                  class="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-700 focus:border-transparent text-sm transition-all"
                 />
                 <button
                   type="button"
@@ -425,7 +425,7 @@ const goToLogin = () => {
             <div class="space-y-3">
               <button
                 type="submit"
-                class="w-full bg-gray-900 hover:bg-gray-800 text-white px-4 py-2.5 rounded-md font-medium text-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                class="w-full bg-green-900 hover:bg-green-800 text-white px-4 py-2.5 rounded-md font-medium text-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 :disabled="processing"
               >
                 <LoaderCircle v-if="processing" class="h-4 w-4 animate-spin" />
@@ -461,7 +461,7 @@ const goToLogin = () => {
             <button
               type="button"
               @click="goToLogin"
-              class="w-full bg-gray-900 hover:bg-gray-800 text-white px-4 py-2.5 rounded-md font-medium text-sm transition-all duration-200 flex items-center justify-center gap-2"
+              class="w-full bg-green-900 hover:bg-green-800 text-white px-4 py-2.5 rounded-md font-medium text-sm transition-all duration-200 flex items-center justify-center gap-2"
             >
               Go to Login
             </button>
@@ -535,7 +535,7 @@ const goToLogin = () => {
 .card-front {
   width: 100%;
   height: 100%;
-  background: linear-gradient(145deg, #1a1a1a 0%, #0a0a0a 50%, #1a1a1a 100%);
+  background: linear-gradient(145deg, #166534 0%, #14532d 50%, #166534 100%);
   border-radius: 16px;
   padding: 24px;
   position: relative;
@@ -614,7 +614,7 @@ const goToLogin = () => {
 
 .wave {
   position: absolute;
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  border: 2px solid rgba(250, 204, 21, 0.5);
   border-radius: 50%;
   animation: pulse 2s ease-in-out infinite;
 }
@@ -660,7 +660,7 @@ const goToLogin = () => {
 
 .card-logo {
   font-size: 24px;
-  color: white;
+  color: #facc15;
   letter-spacing: 1px;
 }
 
@@ -670,12 +670,12 @@ const goToLogin = () => {
 
 .card-logo .font-light {
   font-weight: 300;
-  color: rgba(255, 255, 255, 0.6);
+  color: white;
 }
 
 .card-id {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.7);
   font-family: 'Courier New', monospace;
   letter-spacing: 2px;
   margin-top: 4px;
@@ -694,17 +694,17 @@ const goToLogin = () => {
 
 .card-label {
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.5);
+  color: white;
   letter-spacing: 3px;
   font-weight: 500;
 }
 
 .card-type {
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.5);
+  color: #facc15;
   letter-spacing: 2px;
   padding: 4px 8px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid #facc15;
   border-radius: 4px;
 }
 

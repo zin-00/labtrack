@@ -634,6 +634,9 @@ onMounted(() => {
                                             Description
                                         </th>
                                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Status
+                                        </th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                             Submitted
                                         </th>
                                         <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -651,6 +654,18 @@ onMounted(() => {
                                         </td>
                                         <td class="px-4 py-3">
                                             <div class="text-xs text-gray-700 max-w-md truncate">{{ report.description }}</div>
+                                        </td>
+                                        <td class="px-4 py-3 whitespace-nowrap">
+                                            <span
+                                                :class="{
+                                                    'px-2 inline-flex text-xs leading-5 font-semibold rounded-full': true,
+                                                    'bg-green-100 text-green-800': report.status === 'Resolved',
+                                                    'bg-yellow-100 text-yellow-800': report.status === 'Pending',
+                                                    'bg-gray-100 text-gray-800': report.status === 'New'
+                                                }"
+                                            >
+                                                {{ report.status || 'New' }}
+                                            </span>
                                         </td>
                                         <td class="px-4 py-3 whitespace-nowrap">
                                             <div class="text-xs text-gray-900">{{ dayjs(report.created_at).format('MMM D, YYYY') }}</div>

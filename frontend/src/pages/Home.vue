@@ -25,8 +25,8 @@ const scrollToSection = (sectionId) => {
           <div class="flex items-center justify-between h-16">
             <!-- Logo -->
             <div class="flex items-center space-x-3">
-              <div class="w-35 h-auto rounded flex items-center justify-center">
-                <img src="../assets/lb5.png" alt="" srcset="">
+              <div class="w-30 h-auto rounded flex items-center justify-center">
+                <img src="../assets/sfxclogov1.png" alt="" srcset="">
               </div>
             </div>
 
@@ -65,9 +65,9 @@ const scrollToSection = (sectionId) => {
               </router-link> -->
               <router-link
                 to="/request-account"
-                class="bg-black rounded-[100px] text-white px-4 py-2 text-xs font-medium hover:bg-green-700 transition-colors"
+                class="bg-green-900 rounded-[100px] text-white px-4 py-2 text-xs font-medium hover:bg-green-800 transition-colors"
               >
-                Request Access
+                Request Account
               </router-link>
             </div>
           </div>
@@ -83,7 +83,7 @@ const scrollToSection = (sectionId) => {
               <!-- Main Logo & Title -->
               <div class="mb-6">
                 <div class="w-64 h-auto flex items-center justify-center lg:justify-start mb-4">
-                    <img src="../assets/lbv6.png" alt="LabTrack" class="w-full h-full object-contain">
+                    <img src="../assets/1.png" alt="LabTrack" class="w-full h-full object-contain">
                 </div>
                 <p class="text-sm text-gray-400 uppercase tracking-[0.2em] font-medium">
                   Computer Laboratory Tracker
@@ -99,7 +99,7 @@ const scrollToSection = (sectionId) => {
               <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
                 <router-link
                   to="/login"
-                  class="bg-black text-white px-8 py-3 font-medium hover:bg-green-700 transition-colors"
+                  class="bg-green-900 text-white px-8 py-3 font-medium hover:bg-green-800 transition-colors"
                 >
                   Get Started
                 </router-link>
@@ -139,7 +139,7 @@ const scrollToSection = (sectionId) => {
                     <!-- Card Content -->
                     <div class="card-content">
                       <div class="card-logo">
-                        <span class="font-bold">Lab</span><span class="font-light">Track</span>
+                        <span class="font-bold">LAB</span><span class="font-light">TRACK</span>
                       </div>
                       <div class="card-id">ID: XXXX-XXXX-XXXX</div>
                     </div>
@@ -163,11 +163,11 @@ const scrollToSection = (sectionId) => {
       </section>
 
       <!-- About Section -->
-      <section id="about" class="py-16 bg-gray-50">
+      <section id="about" class="py-16 bg-green-900">
         <div class="container mx-auto px-6">
           <div class="max-w-4xl mx-auto text-center">
-            <h2 class="text-3xl font-bold mb-6">About LabTrack</h2>
-            <p class="text-gray-700 text-lg max-w-3xl mx-auto leading-relaxed">
+            <h2 class="text-3xl font-bold mb-6 text-white">About LabTrack</h2>
+            <p class="text-white/90 text-lg max-w-3xl mx-auto leading-relaxed">
               LabTrack is a school-based Laboratory Management System that helps monitor equipment,
               schedule usage, 
               and track maintenance with ease. It ensures accountability, 
@@ -179,16 +179,16 @@ const scrollToSection = (sectionId) => {
       </section>
 
 <!-- Features Section -->
-<section id="features" class="py-16">
+<section id="features" class="py-16 bg-white border-r-4 border-green-800">
   <div class="container mx-auto px-6">
     <div class="max-w-4xl mx-auto">
-      <h2 class="text-3xl font-bold text-center mb-12">Core Features</h2>
+      <h2 class="text-3xl font-bold text-center mb-12 text-green-900">Core Features</h2>
       
       <div class="grid md:grid-cols-3 gap-8">
         
         <!-- User Role Management -->
         <div class="bg-white border border-gray-200 p-6 hover:border-green-700 transition-colors shadow-sm hover:shadow-md">
-          <div class="w-12 h-12 bg-black rounded flex items-center justify-center mb-4">
+          <div class="w-12 h-12 bg-green-800 rounded flex items-center justify-center mb-4">
             <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2
@@ -207,7 +207,7 @@ const scrollToSection = (sectionId) => {
 
         <!-- Reporting & Analytics -->
         <div class="bg-white border border-gray-200 p-6 hover:border-green-700 transition-colors shadow-sm hover:shadow-md">
-          <div class="w-12 h-12 bg-black rounded flex items-center justify-center mb-4">
+          <div class="w-12 h-12 bg-green-800 rounded flex items-center justify-center mb-4">
             <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 
@@ -228,7 +228,7 @@ const scrollToSection = (sectionId) => {
 
         <!-- Maintenance & Issue Tracking -->
         <div class="bg-white border border-gray-200 p-6 hover:border-green-700 transition-colors shadow-sm hover:shadow-md">
-          <div class="w-12 h-12 bg-black rounded flex items-center justify-center mb-4">
+          <div class="w-12 h-12 bg-green-800 rounded flex items-center justify-center mb-4">
             <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M9 12h6m2 8H7a2 2 0 01-2-2V6a2 2 
@@ -251,57 +251,57 @@ const scrollToSection = (sectionId) => {
 
 
       <!-- Benefits Section -->
-      <section id="benefits" class="py-16 bg-gray-50">
+      <section id="benefits" class="py-16 bg-green-900">
         <div class="container mx-auto px-6">
           <div class="max-w-4xl mx-auto">
-            <h2 class="text-3xl font-bold text-center mb-12">Why Choose LabTrack?</h2>
+            <h2 class="text-3xl font-bold text-center mb-12 text-white">Why Choose LabTrack?</h2>
             
             <div class="grid md:grid-cols-2 gap-8">
               <div class="flex items-start space-x-4">
-                <div class="w-6 h-6 bg-green-700 rounded flex items-center justify-center flex-shrink-0 mt-1">
-                  <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="w-6 h-6 bg-yellow-400 rounded flex items-center justify-center flex-shrink-0 mt-1">
+                  <svg class="w-4 h-4 text-green-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                   </svg>
                 </div>
                 <div>
-                  <h4 class="font-semibold text-black mb-2">Academic Integration</h4>
-                  <p class="text-gray-600">Specifically designed for educational institutions with full academic calendar and curriculum support.</p>
+                  <h4 class="font-semibold text-white mb-2">Academic Integration</h4>
+                  <p class="text-white/80">Specifically designed for educational institutions with full academic calendar and curriculum support.</p>
                 </div>
               </div>
               
               <div class="flex items-start space-x-4">
-                <div class="w-6 h-6 bg-green-700 rounded flex items-center justify-center flex-shrink-0 mt-1">
-                  <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="w-6 h-6 bg-yellow-400 rounded flex items-center justify-center flex-shrink-0 mt-1">
+                  <svg class="w-4 h-4 text-green-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                   </svg>
                 </div>
                 <div>
-                  <h4 class="font-semibold text-black mb-2">Safety Compliance</h4>
-                  <p class="text-gray-600">Built-in safety protocols and automated compliance tracking for all laboratory operations.</p>
+                  <h4 class="font-semibold text-white mb-2">Safety Compliance</h4>
+                  <p class="text-white/80">Built-in safety protocols and automated compliance tracking for all laboratory operations.</p>
                 </div>
               </div>
               
               <div class="flex items-start space-x-4">
-                <div class="w-6 h-6 bg-green-700 rounded flex items-center justify-center flex-shrink-0 mt-1">
-                  <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="w-6 h-6 bg-yellow-400 rounded flex items-center justify-center flex-shrink-0 mt-1">
+                  <svg class="w-4 h-4 text-green-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                   </svg>
                 </div>
                 <div>
-                  <h4 class="font-semibold text-black mb-2">Research Support</h4>
-                  <p class="text-gray-600">Comprehensive tools and features designed to enhance academic research and student projects.</p>
+                  <h4 class="font-semibold text-white mb-2">Research Support</h4>
+                  <p class="text-white/80">Comprehensive tools and features designed to enhance academic research and student projects.</p>
                 </div>
               </div>
               
               <div class="flex items-start space-x-4">
-                <div class="w-6 h-6 bg-green-700 rounded flex items-center justify-center flex-shrink-0 mt-1">
-                  <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="w-6 h-6 bg-yellow-400 rounded flex items-center justify-center flex-shrink-0 mt-1">
+                  <svg class="w-4 h-4 text-green-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                   </svg>
                 </div>
                 <div>
-                  <h4 class="font-semibold text-black mb-2">Cost Efficiency</h4>
-                  <p class="text-gray-600">Optimize resource allocation and significantly reduce operational costs through intelligent management.</p>
+                  <h4 class="font-semibold text-white mb-2">Cost Efficiency</h4>
+                  <p class="text-white/80">Optimize resource allocation and significantly reduce operational costs through intelligent management.</p>
                 </div>
               </div>
             </div>
@@ -310,10 +310,10 @@ const scrollToSection = (sectionId) => {
       </section>
 
       <!-- Contact Section -->
-      <section id="contact" class="py-16">
+      <section id="contact" class="py-16 bg-white border-r-4 border-green-800">
         <div class="container mx-auto px-6">
           <div class="max-w-4xl mx-auto text-center">
-            <h2 class="text-3xl font-bold mb-6">Get Started Today</h2>
+            <h2 class="text-3xl font-bold mb-6 text-green-900">Get Started Today</h2>
             <p class="text-gray-700 text-lg mb-8 max-w-2xl mx-auto">
               Ready to transform your laboratory management? Join Saint Francis Xavier College's commitment to academic excellence.
             </p>
@@ -321,7 +321,7 @@ const scrollToSection = (sectionId) => {
             <div class="flex flex-col sm:flex-row gap-4 justify-center mb-8">
               <router-link
                 to="/contact"
-                class="bg-black text-white px-8 py-3 font-medium hover:bg-green-700 transition-colors"
+                class="bg-green-900 text-white px-8 py-3 font-medium hover:bg-green-800 transition-colors"
               >
                 Contact IT Support
               </router-link>
@@ -334,7 +334,7 @@ const scrollToSection = (sectionId) => {
             </div>
 
             <div class="text-center text-gray-400 text-sm">
-              <p>&copy; 2024 Saint Francis Xavier College. All rights reserved.</p>
+              <p>&copy; 2025 Saint Francis Xavier College. All rights reserved.</p>
             </div>
           </div>
         </div>
@@ -471,7 +471,7 @@ nav {
 .card-front {
   width: 100%;
   height: 100%;
-  background: linear-gradient(145deg, #1a1a1a 0%, #0a0a0a 50%, #1a1a1a 100%);
+  background: linear-gradient(145deg, #166534 0%, #14532d 50%, #166534 100%);
   border-radius: 16px;
   padding: 24px;
   position: relative;
@@ -550,7 +550,7 @@ nav {
 
 .wave {
   position: absolute;
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  border: 2px solid rgba(250, 204, 21, 0.5);
   border-radius: 50%;
   animation: pulse 2s ease-in-out infinite;
 }
@@ -596,7 +596,7 @@ nav {
 
 .card-logo {
   font-size: 24px;
-  color: white;
+  color: #facc15;
   letter-spacing: 1px;
 }
 
@@ -606,12 +606,12 @@ nav {
 
 .card-logo .font-light {
   font-weight: 300;
-  color: rgba(255, 255, 255, 0.6);
+  color: white;
 }
 
 .card-id {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.7);
   font-family: 'Courier New', monospace;
   letter-spacing: 2px;
   margin-top: 4px;
@@ -630,17 +630,17 @@ nav {
 
 .card-label {
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.5);
+  color: white;
   letter-spacing: 3px;
   font-weight: 500;
 }
 
 .card-type {
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.5);
+  color: #facc15;
   letter-spacing: 2px;
   padding: 4px 8px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid #facc15;
   border-radius: 4px;
 }
 

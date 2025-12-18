@@ -24,7 +24,7 @@
     
     <!-- Sidebar -->
     <div 
-      class="fixed inset-y-0 left-0 z-30 pt-16 transition-all duration-300 ease-in-out bg-white shadow-sm border-r border-gray-200 flex flex-col"
+      class="fixed inset-y-0 left-0 z-30 transition-all duration-300 ease-in-out bg-white shadow-sm border-r border-gray-200 flex flex-col"
       :class="{
         'w-60': sidebarState === 'full',
         'w-[60px]': sidebarState === 'icon',
@@ -33,6 +33,40 @@
         '-translate-x-full': sidebarState === 'closed'
       }"
     >
+      <!-- Logo Section -->
+      <div 
+        class="flex items-center border-b border-gray-200 shrink-0 transition-all duration-300"
+        :class="{
+          'h-16 px-3 justify-start gap-2': sidebarState === 'full',
+          'h-14 px-2 justify-center': sidebarState === 'icon',
+          'h-0 opacity-0': sidebarState === 'closed'
+        }"
+      >
+        <!-- Icon Logo (always shown when not closed) -->
+        <img 
+          v-if="sidebarState !== 'closed'"
+          src="../../assets/log-trans.png" 
+          alt="Logo" 
+          class="object-contain transition-all duration-300"
+          :class="{
+            'h-12 w-12': sidebarState === 'full',
+            'h-10 w-10': sidebarState === 'icon'
+          }"
+        />
+        <!-- LabTrack Text (only in full state) -->
+        <div 
+          v-if="sidebarState === 'full'"
+          class="flex flex-col transition-all duration-300"
+        >
+          <span class="text-base font-bold text-green-800 leading-tight">
+            LabTrack
+          </span>
+          <span class="text-[10px] text-gray-500 leading-tight">
+            Laboratory Management
+          </span>
+        </div>
+      </div>
+
       <!-- Scrollable Menu Section -->
       <div class="flex-1 py-4 overflow-y-auto overflow-x-visible">
         <ul class="space-y-1 font-medium px-3">
@@ -175,7 +209,7 @@
         class="fixed left-20 z-[9999] pointer-events-none transition-opacity duration-200"
         :style="{ top: tooltipState.top - 16 + 'px' }"
       >
-        <div class="px-3 py-2 bg-gray-800 text-white text-xs rounded-lg shadow-lg whitespace-nowrap">
+        <div class="px-3 py-2 bg-green-800 text-white text-xs rounded-lg shadow-lg whitespace-nowrap">
           {{ tooltipState.text }}
           <div class="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-1 w-2 h-2 bg-gray-800 rotate-45"></div>
         </div>
