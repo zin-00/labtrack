@@ -497,7 +497,7 @@ const goToLogin = () => {
             <!-- Card Content -->
             <div class="card-content">
               <div class="card-logo">
-                <span class="font-bold">Lab</span><span class="font-light">Track</span>
+                <span class="font-bold">L A B</span> <span class="font-light">T R A C K</span>
               </div>
               <div class="card-id">ID: XXXX-XXXX-XXXX</div>
             </div>

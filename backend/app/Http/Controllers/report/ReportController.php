@@ -4,10 +4,12 @@ namespace App\Http\Controllers\report;
 
 use App\Events\MainEvent;
 use App\Http\Controllers\Controller;
+use App\Mail\ReportResolvedMail;
 use App\Models\Report;
 use App\Models\Student;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 
 class ReportController extends Controller
 {
@@ -91,9 +93,37 @@ class ReportController extends Controller
 
     public function resolve(Request $request, $id)
     {
-        $report = Report::findOrFail($id);
+        $report = Report::with('student')->findOrFail($id);
 
-        $report->update('status', 'resolved');
+        $report->update(['status' => 'resolved']);
+
+        // Send notification and email to the student who submitted the report
+        if ($report->student) {
+            // Send in-app notification
+            if ($report->student->user_id) {
+                NotificationService::success(
+                    $report->student->user_id,
+                    'Report Resolved',
+                    "Your report has been resolved: {$report->description}",
+                    [
+                        'link' => '/reports',
+                        'data' => ['report_id' => $report->id]
+                    ]
+                );
+            }
+
+            // Send email notification
+            if ($report->student->email) {
+                Mail::to($report->student->email)->send(
+                    new ReportResolvedMail(
+                        $report->student->fullname,
+                        $report->description
+                    )
+                );
+            }
+        }
+
+        broadcast(new MainEvent('report', 'resolved', $report));
 
         return response()->json([
             'message' => 'Report resolved successfully',

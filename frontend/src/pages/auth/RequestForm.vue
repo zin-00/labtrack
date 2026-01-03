@@ -292,7 +292,7 @@ const onPasswordFocus = () => {
                 </button>
                 <button 
                   type="submit"
-                  class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                  class="px-6 py-2 bg-green-900 hover:bg-green-800 text-white rounded-md text-sm font-medium flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
                   :disabled="isLoading || !isValidEmail"
                 >
                   <svg v-if="isLoading" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">

@@ -79,9 +79,25 @@ export const useReportsStore = defineStore('reports', () => {
         }
     }
 
+    const resolveReport = async (reportId) => {
+        try {
+            isLoading.value = true;
+            const response = await axios.patch(`${api}/reports/${reportId}/resolve`, {}, getAuthHeader());
+            toast.success(response.data.message || 'Report resolved successfully!');
+            console.log(response.data.message);
+            isLoading.value = false;
+        } catch (error) {
+            console.error('Error resolving report:', error);
+            toast.error(error.response?.data?.message || 'Error resolving report');
+        } finally {
+            isLoading.value = false;
+        }
+    }
+
     return {
         submitReport,
         deleteReport,
         fetchReports,
+        resolveReport,
     }
 });

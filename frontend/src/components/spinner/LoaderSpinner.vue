@@ -45,18 +45,18 @@ watch(() => props.isLoading, (newVal) => {
           </div>
           
           <!-- Inner pulse circle -->
-          <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-            <div class="w-8 h-8 bg-gray-800 rounded-full opacity-20 animate-ping"></div>
-            <div class="absolute inset-0 w-8 h-8 bg-gray-700 rounded-full opacity-40"></div>
-          </div>
+          <!-- <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+            <div class="w-8 h-8 bg-green-900 rounded-full opacity-20 animate-ping"></div>
+            <div class="absolute inset-0 w-8 h-8 bg-green-700 rounded-full opacity-40"></div>
+          </div> -->
         </div>
         
         <!-- Loading Text with Animation -->
         <div class="space-y-3">
           <div class="flex items-center justify-center gap-1.5">
-            <span class="w-2 h-2 bg-gray-800 rounded-full animate-bounce" style="animation-delay: 0ms"></span>
-            <span class="w-2 h-2 bg-gray-600 rounded-full animate-bounce" style="animation-delay: 150ms"></span>
-            <span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 300ms"></span>
+            <span class="w-2 h-2 bg-green-800 rounded-full animate-bounce" style="animation-delay: 0ms"></span>
+            <span class="w-2 h-2 bg-green-600 rounded-full animate-bounce" style="animation-delay: 150ms"></span>
+            <span class="w-2 h-2 bg-green-400 rounded-full animate-bounce" style="animation-delay: 300ms"></span>
           </div>
           <p class="text-gray-600 text-sm font-medium tracking-wide">{{ subMessage }}</p>
         </div>

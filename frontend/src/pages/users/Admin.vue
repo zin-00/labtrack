@@ -225,7 +225,7 @@ onMounted(() => {
                             <button
                                 @click="refreshData"
                                 title="Refresh"
-                                class="p-2 text-gray-600 bg-white border border-gray-300 hover:bg-gray-50 rounded-md transition"
+                                class="px-3 py-2 text-white bg-green-900 border border-gray-300 hover:bg-green-800 rounded-md transition"
                             >
                                 <ArrowPathIcon class="h-4 w-4" />
                             </button>
@@ -233,7 +233,7 @@ onMounted(() => {
                             <button
                                 @click="openAddModal"
                                 title="Add Admin"
-                                class="p-2 text-gray-600 bg-white border border-gray-300 hover:bg-gray-50 rounded-md transition"
+                                class="px-3 py-2 text-white bg-green-900 border border-gray-300 hover:bg-green-800 rounded-md transition"
                             >
                                 <UserPlusIcon class="h-4 w-4" />
                             </button>
@@ -241,7 +241,7 @@ onMounted(() => {
                             <button
                                 @click="xl.isImportModalOpen = true"
                                 title="Import"
-                                class="p-2 text-gray-600 bg-white border border-gray-300 hover:bg-gray-50 rounded-md transition"
+                                class="px-3 py-2 text-white bg-green-900 border border-gray-300 hover:bg-green-800 rounded-md transition"
                             >
                                 <ArrowDownTrayIcon class="h-4 w-4" />
                             </button>

@@ -599,15 +599,16 @@ onMounted( async () => {
                 <!-- Header Section -->
                 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-6">
                 <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                        <!-- Page Title -->
-                        <div>
-                            <h1 class="text-xl font-semibold text-gray-900">Laboratory Management</h1>
-                            <p class="text-sm text-gray-600 mt-0.5">Manage and organize your computer laboratories</p>
-                        </div>
+                    <!-- Row 1: Page Title -->
+                    <div class="mb-4">
+                        <h1 class="text-xl font-semibold text-gray-900">Laboratory Management</h1>
+                        <p class="text-sm text-gray-600 mt-0.5">Manage and organize your computer laboratories</p>
+                    </div>
 
-                        <!-- Filters and Actions Row -->
-                        <div class="flex flex-wrap items-center gap-3">
+                    <!-- Row 2: Filters and Actions -->
+                    <div class="flex flex-wrap items-center gap-3 pt-3 border-t border-gray-100">
+                        <!-- Left Side: Filters -->
+                        <div class="flex flex-wrap items-center gap-3 flex-1">
                             <!-- Search Input -->
                             <div class="w-64">
                                 <div class="relative">
@@ -649,23 +650,26 @@ onMounted( async () => {
                             <div class="text-xs text-gray-600 bg-gray-100 px-3 py-2 rounded-lg border border-gray-200">
                                 {{ laboratories.length }} result{{ laboratories.length !== 1 ? 's' : '' }}
                             </div>
+                        </div>
 
+                        <!-- Right Side: Action Buttons -->
+                        <div class="flex items-center gap-2">
                             <!-- Add Button -->
                             <Button
                                 @click="openAddModal"
-                                class="inline-flex items-center gap-2 px-3 py-2 bg-gray-700 text-white text-xs font-medium rounded-lg hover:bg-gray-600 transition-colors shadow-sm"
+                                class="inline-flex items-center gap-2 px-3 py-2 bg-green-900 text-white text-xs font-medium rounded-lg hover:bg-green-800 transition-colors shadow-sm"
                             >
                                 <PlusIcon class="h-4 w-4" />
                                 Add Laboratory
                             </Button>
 
                             <!-- Generate usage report -->
-                             <Button
+                            <Button
                                 @click="openReportModal"
-                                class="inline-flex items-center gap-2 px-3 py-2 bg-gray-700 text-white text-xs font-medium rounded-lg hover:bg-gray-600 transition-colors shadow-sm"
-                             >
-                             Generate Usage
-                             </Button>
+                                class="inline-flex items-center gap-2 px-3 py-2 bg-green-900 text-white text-xs font-medium rounded-lg hover:bg-green-800 transition-colors shadow-sm"
+                            >
+                                Generate Usage
+                            </Button>
                         </div>
                     </div>
                 </div>
@@ -784,7 +788,7 @@ onMounted( async () => {
 
                             <Button
                                 @click.stop="openPopulateModal(lab.id)"
-                                class="text-xs px-2.5 py-1.5 bg-gray-700 text-white rounded-md hover:bg-gray-600 transition-colors font-medium"
+                                class="text-xs px-2.5 py-1.5 bg-green-900 text-white rounded-md hover:bg-green-800 transition-colors font-medium"
                             >
                                 Assign PCs
                             </Button>
@@ -1012,6 +1016,7 @@ onMounted( async () => {
                         
                         <div class="flex gap-2">
                             <Button
+                                variant="light"
                                 @click="populateModal = false"
                                 class="px-3 py-2 text-xs text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                             >
@@ -1021,7 +1026,7 @@ onMounted( async () => {
                                 v-if="assignMode === 'assign'"
                                 @click="assignComputers"
                                 :disabled="selectedComputers.length === 0"
-                                class="px-4 py-2 text-xs bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                class="px-4 py-2 text-xs bg-green-900 text-white rounded-lg hover:bg-green-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 Assign Selected ({{ selectedComputers.length }})
                             </Button>
@@ -1029,7 +1034,7 @@ onMounted( async () => {
                                 v-else
                                 @click="unassignComputers"
                                 :disabled="selectedComputersForUnassign.length === 0"
-                                class="px-4 py-2 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                class="px-4 py-2 text-xs bg-green-900 text-white rounded-lg hover:bg-green-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 Unassign Selected ({{ selectedComputersForUnassign.length }})
                             </Button>
@@ -1381,7 +1386,8 @@ onMounted( async () => {
                     <div class="px-4 py-3 bg-gray-50 border-t border-gray-100 rounded-b-xl flex justify-end shrink-0">
                         <Button
                             @click="reportModal = false"
-                            class="px-3 py-2 text-xs text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                            
+                            class="px-4 py-2 text-xs font-medium text-white bg-green-900 rounded-lg hover:bg-green-800 transition"
                         >
                             Close
                         </Button>
@@ -1393,7 +1399,7 @@ onMounted( async () => {
             <Modal :show="isModalOpen" @close="isModalOpen = false">
                 <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-auto relative border border-gray-200">
                     <!-- Modal Header -->
-                    <div class="px-4 py-3 border-b border-gray-100 bg-white">
+                    <div class="px-4 py-3 border-b border-gray-100 bg-white rounded-xl">
                         <h2 class="text-base font-semibold text-gray-900">
                             {{ selectedLab ? 'Edit Laboratory' : 'Add Laboratory' }}
                         </h2>
@@ -1452,6 +1458,7 @@ onMounted( async () => {
                     <div class="px-4 py-3 bg-gray-50 border-t border-gray-100 rounded-b-xl flex justify-end gap-2">
                         <Button
                             type="button"
+                            variant="light"
                             @click="isModalOpen = false"
                             class="px-3 py-2 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
                         >
@@ -1460,7 +1467,7 @@ onMounted( async () => {
                         <Button
                             @click="saveLaboratory"
                             type="submit"
-                            class="px-4 py-2 text-xs font-medium text-white bg-gray-700 rounded-lg hover:bg-gray-600 transition"
+                            class="px-4 py-2 text-xs font-medium text-white bg-green-900 rounded-lg hover:bg-green-800 transition"
                         >
                             Save
                         </Button>

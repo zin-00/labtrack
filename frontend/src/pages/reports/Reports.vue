@@ -11,17 +11,19 @@ import {
     EyeIcon,
     TrashIcon,
     FileTextIcon,
-    FilterIcon
+    FilterIcon,
+    PrinterIcon
 } from 'lucide-vue-next';
 import LoaderSpinner from '../../components/spinner/LoaderSpinner.vue';
 import { useStates } from '../../composable/states';
 import { useRouter } from 'vue-router';
 import Modal from '../../components/modal/Modal.vue';
+import { CheckCircle } from 'lucide-vue-next';
 
 const state = useStates();
 const reportStore = useReportsStore();
 const { reports, pagination, isLoading } = toRefs(state);
-const { fetchReports, deleteReport } = reportStore;
+const { fetchReports, deleteReport, resolveReport } = reportStore;
 
 const router = useRouter();
 
@@ -37,6 +39,48 @@ const showModal = ref(false);
 const selectedReport = ref(null);
 const showDeleteModal = ref(false);
 const reportToDelete = ref(null);
+const showPrintModal = ref(false);
+const selectedPrintReports = ref([]);
+
+// Print modal filters
+const printSearchQuery = ref('');
+const printDateFrom = ref('');
+const printDateTo = ref('');
+const printStatusFilter = ref('');
+
+// Filtered reports for print modal
+const filteredPrintReports = computed(() => {
+    return reports.value.filter(report => {
+        // Search filter
+        if (printSearchQuery.value) {
+            const query = printSearchQuery.value.toLowerCase();
+            const matchesSearch = 
+                report.fullname?.toLowerCase().includes(query) ||
+                report.description?.toLowerCase().includes(query) ||
+                report.student_name?.toLowerCase().includes(query);
+            if (!matchesSearch) return false;
+        }
+        
+        // Status filter
+        if (printStatusFilter.value && report.status !== printStatusFilter.value) {
+            return false;
+        }
+        
+        // Date from filter
+        if (printDateFrom.value) {
+            const reportDate = dayjs(report.created_at).format('YYYY-MM-DD');
+            if (reportDate < printDateFrom.value) return false;
+        }
+        
+        // Date to filter
+        if (printDateTo.value) {
+            const reportDate = dayjs(report.created_at).format('YYYY-MM-DD');
+            if (reportDate > printDateTo.value) return false;
+        }
+        
+        return true;
+    });
+});
 
 // Debounced filter application
 const applyFilters = debounce(() => {
@@ -77,6 +121,60 @@ const closeModal = () => {
 const openDeleteModal = (report) => {
     reportToDelete.value = report;
     showDeleteModal.value = true;
+};
+
+// Print Layout Modal
+const openPrintModal = () => {
+    selectedPrintReports.value = [];
+    printSearchQuery.value = '';
+    printDateFrom.value = '';
+    printDateTo.value = '';
+    printStatusFilter.value = '';
+    showPrintModal.value = true;
+};
+
+const closePrintModal = () => {
+    showPrintModal.value = false;
+    selectedPrintReports.value = [];
+    printSearchQuery.value = '';
+    printDateFrom.value = '';
+    printDateTo.value = '';
+    printStatusFilter.value = '';
+};
+
+const togglePrintReport = (reportId) => {
+    const index = selectedPrintReports.value.indexOf(reportId);
+    if (index === -1) {
+        selectedPrintReports.value.push(reportId);
+    } else {
+        selectedPrintReports.value.splice(index, 1);
+    }
+};
+
+const selectAllForPrint = () => {
+    if (selectedPrintReports.value.length === filteredPrintReports.value.length) {
+        selectedPrintReports.value = [];
+    } else {
+        selectedPrintReports.value = filteredPrintReports.value.map(r => r.id);
+    }
+};
+
+const printSelectedReports = () => {
+    if (selectedPrintReports.value.length === 0) return;
+    
+    const selectedReports = reports.value.filter(r => selectedPrintReports.value.includes(r.id));
+    const combinedHtml = selectedReports.map(report => getIncidentReportHtml(report)).join('<div style="page-break-before: always;"></div>');
+    
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+        printWindow.document.write(combinedHtml);
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => {
+            printWindow.print();
+        }, 250);
+    }
+    closePrintModal();
 };
 
 const closeDeleteModal = () => {
@@ -525,15 +623,16 @@ onMounted(() => {
                 <!-- Header Section -->
                 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-6">
                     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                            <!-- Page Title -->
-                            <div>
-                                <h1 class="text-xl font-semibold text-gray-900">Reports</h1>
-                                <p class="text-sm text-gray-600 mt-0.5">View and manage student incident reports</p>
-                            </div>
+                        <!-- Row 1: Page Title -->
+                        <div class="mb-4">
+                            <h1 class="text-xl font-semibold text-gray-900">Reports</h1>
+                            <p class="text-sm text-gray-600 mt-0.5">View and manage student incident reports</p>
+                        </div>
 
-                            <!-- Filters Row -->
-                            <div class="flex flex-wrap items-center gap-3">
+                        <!-- Row 2: Filters and Actions -->
+                        <div class="flex flex-wrap items-center gap-3 pt-3 border-t border-gray-100">
+                            <!-- Left Side: Filters -->
+                            <div class="flex flex-wrap items-center gap-3 flex-1">
                                 <!-- Date Filters -->
                                 <div v-if="showFilters" class="flex items-center gap-2">
                                     <input
@@ -590,6 +689,18 @@ onMounted(() => {
                                     <FilterIcon class="w-4 h-4" />
                                     {{ showFilters ? 'Hide' : 'Show' }} Dates
                                 </button>
+                            </div>
+
+                            <!-- Right Side: Action Buttons -->
+                            <div class="flex items-center gap-2">
+                                <!-- Print Layout Button -->
+                                <button
+                                    @click="openPrintModal"
+                                    class="inline-flex items-center gap-2 px-3 py-2 bg-green-700 text-white text-xs font-medium rounded-lg hover:bg-green-600 transition-colors"
+                                    title="Print Layout"
+                                >
+                                    <PrinterIcon class="h-4 w-4" />
+                                </button>
 
                                 <!-- Refresh Button -->
                                 <button
@@ -598,7 +709,6 @@ onMounted(() => {
                                     title="Refresh"
                                 >
                                     <RefreshCcwIcon class="h-4 w-4" />
-                                    Refresh
                                 </button>
                             </div>
                         </div>
@@ -659,8 +769,8 @@ onMounted(() => {
                                             <span
                                                 :class="{
                                                     'px-2 inline-flex text-xs leading-5 font-semibold rounded-full': true,
-                                                    'bg-green-100 text-green-800': report.status === 'Resolved',
-                                                    'bg-yellow-100 text-yellow-800': report.status === 'Pending',
+                                                    'bg-green-100 text-green-800': report.status === 'resolved',
+                                                    'bg-yellow-100 text-yellow-800': report.status === 'pending',
                                                     'bg-gray-100 text-gray-800': report.status === 'New'
                                                 }"
                                             >
@@ -696,6 +806,20 @@ onMounted(() => {
                                                 >
                                                     <TrashIcon class="h-3.5 w-3.5" />
                                                     Delete
+                                                </button>
+                                                <button
+                                                    @click="resolveReport(report.id).then(() => refreshReports())"
+                                                    :disabled="report.status === 'resolved'"
+                                                    :title="report.status === 'resolved' ? 'Already Resolved' : 'Mark as Resolved'"
+                                                    :class="[
+                                                        'inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md transition-colors border',
+                                                        report.status === 'resolved' 
+                                                            ? 'text-gray-400 bg-gray-100 border-gray-200 cursor-not-allowed' 
+                                                            : 'text-green-700 bg-green-50 hover:bg-green-100 border-green-200'
+                                                    ]"
+                                                >
+                                                    <CheckCircle class="h-3.5 w-3.5" />
+                                                    {{ report.status === 'resolved' ? 'Resolved' : 'Resolve' }}
                                                 </button>
                                             </div>
                                         </td>
@@ -859,6 +983,145 @@ onMounted(() => {
                         class="flex-1 px-4 py-2 text-xs font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-600 transition-colors"
                     >
                         Delete Report
+                    </button>
+                </div>
+            </div>
+        </Modal>
+
+        <!-- Print Layout Modal -->
+        <Modal :show="showPrintModal" @close="closePrintModal" max-width="lg">
+            <div class="relative bg-white p-6 rounded-lg">
+                <!-- Icon -->
+                <div class="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-green-50 rounded-full border border-green-200">
+                    <PrinterIcon class="w-6 h-6 text-green-700" />
+                </div>
+
+                <!-- Modal header -->
+                <div class="text-center mb-4">
+                    <h3 class="text-base font-semibold text-gray-900 mb-2">
+                        Print Reports
+                    </h3>
+                    <p class="text-sm text-gray-600">
+                        Select the reports you want to print
+                    </p>
+                </div>
+
+                <!-- Filters Section -->
+                <div class="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                        <!-- Search -->
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Search</label>
+                            <input
+                                v-model="printSearchQuery"
+                                type="text"
+                                placeholder="Search by name..."
+                                class="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-200 focus:border-green-400 bg-white transition-colors"
+                            />
+                        </div>
+                        
+                        <!-- Date From -->
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Date From</label>
+                            <input
+                                v-model="printDateFrom"
+                                type="date"
+                                class="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-200 focus:border-green-400 bg-white transition-colors"
+                            />
+                        </div>
+                        
+                        <!-- Date To -->
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Date To</label>
+                            <input
+                                v-model="printDateTo"
+                                type="date"
+                                class="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-200 focus:border-green-400 bg-white transition-colors"
+                            />
+                        </div>
+                        
+                        <!-- Status -->
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Status</label>
+                            <select
+                                v-model="printStatusFilter"
+                                class="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-200 focus:border-green-400 bg-white transition-colors"
+                            >
+                                <option value="">All Status</option>
+                                <option value="pending">Pending</option>
+                                <option value="resolved">Resolved</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Select All -->
+                <div class="flex items-center justify-between mb-3 pb-3 border-b border-gray-200">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input
+                            type="checkbox"
+                            :checked="selectedPrintReports.length === filteredPrintReports.length && filteredPrintReports.length > 0"
+                            @change="selectAllForPrint"
+                            class="w-4 h-4 text-green-700 border-gray-300 rounded focus:ring-green-600"
+                        />
+                        <span class="text-xs font-medium text-gray-700">Select All</span>
+                    </label>
+                    <span class="text-xs text-gray-500">
+                        {{ selectedPrintReports.length }} of {{ filteredPrintReports.length }} selected
+                    </span>
+                </div>
+
+                <!-- Reports List -->
+                <div class="max-h-[180px] overflow-y-auto space-y-2 mb-6">
+                    <div v-if="filteredPrintReports.length === 0" class="text-center py-8 text-gray-500 text-sm">
+                        No reports match your filters
+                    </div>
+                    <label
+                        v-for="report in filteredPrintReports"
+                        :key="report.id"
+                        class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 cursor-pointer transition-colors"
+                        :class="{ 'ring-2 ring-green-500 bg-green-50': selectedPrintReports.includes(report.id) }"
+                    >
+                        <input
+                            type="checkbox"
+                            :checked="selectedPrintReports.includes(report.id)"
+                            @change="togglePrintReport(report.id)"
+                            class="w-4 h-4 text-green-700 border-gray-300 rounded focus:ring-green-600"
+                        />
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-medium text-gray-900 truncate">
+                                {{ report.fullname }}
+                            </p>
+                            <p class="text-xs text-gray-500 truncate">
+                                {{ dayjs(report.created_at).format('MMM D, YYYY') }} • {{ report.description?.substring(0, 50) }}{{ report.description?.length > 50 ? '...' : '' }}
+                            </p>
+                        </div>
+                        <span 
+                            class="px-2 py-1 text-xs font-medium rounded-full"
+                            :class="report.status === 'resolved' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'"
+                        >
+                            {{ report.status }}
+                        </span>
+                    </label>
+                </div>
+
+                <!-- Modal footer -->
+                <div class="flex gap-3">
+                    <button
+                        @click="closePrintModal"
+                        class="flex-1 px-4 py-2 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 transition-colors"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        @click="printSelectedReports"
+                        :disabled="selectedPrintReports.length === 0"
+                        class="flex-1 px-4 py-2 text-xs font-medium text-white bg-green-700 rounded-lg hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <span class="inline-flex items-center gap-2">
+                            <PrinterIcon class="w-4 h-4" />
+                            Print {{ selectedPrintReports.length > 0 ? `(${selectedPrintReports.length})` : '' }}
+                        </span>
                     </button>
                 </div>
             </div>

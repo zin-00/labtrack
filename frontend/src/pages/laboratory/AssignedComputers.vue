@@ -378,10 +378,9 @@ onMounted(() => {
                         <!-- Bulk Assign Button -->
                         <button
                             @click="openBulkAssignModal"
-                            class="inline-flex items-center gap-2 px-3 py-2 text-xs font-medium text-white bg-gray-700 hover:bg-gray-600 rounded-md transition-colors"
+                            class="inline-flex items-center gap-2 px-3 py-2 text-xs font-medium text-white bg-green-900 hover:bg-green-800 rounded-md transition-colors"
                         >
                             <PlusIcon class="w-4 h-4" />
-                            Bulk Assign
                         </button>
 
                         <!-- Bulk Unassign Button -->
@@ -397,7 +396,7 @@ onMounted(() => {
                         <!-- Refresh Button -->
                         <button
                             @click="refreshData"
-                            class="p-2 text-gray-600 bg-white border border-gray-300 hover:bg-gray-50 rounded-md transition-colors"
+                            class="p-2 text-white bg-green-900 border border-gray-300 hover:bg-green-800 rounded-md transition-colors"
                             title="Refresh"
                         >
                             <ArrowPathIcon class="w-4 h-4" />
@@ -406,7 +405,7 @@ onMounted(() => {
                         <!-- PDF Export Button -->
                         <button
                             @click="generatePDF"
-                            class="inline-flex items-center gap-2 px-3 py-2 text-xs font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-md transition-colors"
+                            class="inline-flex items-center gap-2 px-3 py-2 text-xs font-medium text-white bg-green-900 border border-gray-300 hover:bg-green-800 rounded-md transition-colors"
                         >
                             <DocumentArrowDownIcon class="w-4 h-4" />
                         </button>
@@ -691,10 +690,10 @@ onMounted(() => {
                                     <span class="text-green-600 font-semibold">{{ selectedComputers.size }} computer(s)</span>
                                 </div>
                                 <div v-if="bulkLabFilter" class="text-xs text-gray-500">
-                                    📍 Assigning to: <span class="font-medium">{{ bulkLabFilter.name }}</span>
+                                    Assigning to: <span class="font-medium">{{ bulkLabFilter.name }}</span>
                                 </div>
                                 <div v-if="!bulkLabFilter" class="text-xs text-red-500">
-                                    ⚠️ Please select a laboratory
+                                    Please select a laboratory
                                 </div>
                             </div>
                             <div class="flex gap-2">
@@ -708,7 +707,7 @@ onMounted(() => {
                                 <button
                                     @click="performBulkAssignment"
                                     :disabled="selectedComputers.size === 0 || !bulkLabFilter || isAssigning"
-                                    class="px-4 py-2 text-sm font-medium text-white bg-gray-700 rounded-md hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                    class="px-4 py-2 text-sm font-medium text-white bg-green-900 rounded-md hover:bg-green-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                                 >
                                     <div v-if="isAssigning" class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                                     {{ isAssigning ? 'Assigning...' : `Assign ${selectedComputers.size} Computer(s)` }}

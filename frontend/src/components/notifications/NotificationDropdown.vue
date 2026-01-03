@@ -104,19 +104,20 @@ const setupRealtimeListener = () => {
 
   // Listen on main-channel for notification events
   window.Echo.channel('main-channel')
-    .listen('MainEvent', (e) => {
-      console.log('🔔 Notification event received:', e);
+    .listen('.MainEvent', (e) => {
+      // console.log(' Notification event received:', e);
       if (e.type === 'Notification') {
         if (e.action === 'created') {
           notificationStore.addNotification(e.data);
-          console.log('ew notification added, count:', notificationStore.unreadCount);
+          // alert('New notification received', e.data);
+          // console.log('ew notification added, count:', notificationStore.unreadCount);
         } else if (e.action === 'updated') {
           notificationStore.updateNotification(e.data);
         }
       }
     });
     
-  console.log('🔔 Notification listener registered on main-channel');
+  // console.log('Notification listener registered on main-channel');
 };
 
 onMounted(() => {
@@ -130,9 +131,9 @@ onMounted(() => {
   setupRealtimeListener();
   
   // Poll for unread count every 30 seconds as fallback
-  pollInterval = setInterval(() => {
-    notificationStore.fetchUnreadCount();
-  }, 30000);
+  // pollInterval = setInterval(() => {
+  //   notificationStore.fetchUnreadCount();
+  // }, 30000);
 });
 
 onUnmounted(() => {
@@ -148,7 +149,7 @@ onUnmounted(() => {
     <!-- Notification Bell Button -->
     <button
       @click="toggleDropdown"
-      class="relative p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-300"
+      class="bg-white border border-gray-200 relative p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-300"
     >
       <component
         :is="notificationStore.hasUnread ? BellAlertIcon : BellIcon"

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, defineEmits, useSlots } from 'vue'
+import { ref, computed, useSlots } from 'vue'
 import {
   PencilIcon,
   TrashIcon,

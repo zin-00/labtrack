@@ -8,5 +8,6 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/reports', [ReportController::class, 'index']);
     Route::delete('/reports/{id}', [ReportController::class, 'destroy']);
+    Route::patch('/reports/{id}/resolve', [ReportController::class, 'resolve']);
 });
     Route::post('/reports', [ReportController::class, 'store']);

@@ -59,7 +59,7 @@
           class="flex flex-col transition-all duration-300"
         >
           <span class="text-base font-bold text-green-800 leading-tight">
-            LabTrack
+            L A B T R A C K
           </span>
           <span class="text-[10px] text-gray-500 leading-tight">
             Laboratory Management

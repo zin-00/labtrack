@@ -302,7 +302,7 @@ onMounted(async () => {
                             <button
                                 @click="refreshData"
                                 title="Refresh"
-                                class="p-2 text-gray-600 bg-white border border-gray-300 hover:bg-gray-50 rounded-md transition"
+                                class="p-2 text-white bg-green-900 border border-gray-300 hover:bg-green-800 rounded-md transition"
                             >
                                 <ArrowPathIcon class="h-4 w-4" />
                             </button>
@@ -310,7 +310,7 @@ onMounted(async () => {
                             <button
                                 @click="openAddModal"
                                 title="Add Student"
-                                class="p-2 text-gray-600 bg-white border border-gray-300 hover:bg-gray-50 rounded-md transition"
+                                class="p-2 text-white bg-green-900 border border-gray-300 hover:bg-green-800 rounded-md transition"
                             >
                                 <UserPlusIcon class="h-4 w-4" />
                             </button>
@@ -318,14 +318,14 @@ onMounted(async () => {
                             <button
                                 @click="xl.isImportModalOpen = true"
                                 title="Import"
-                                class="p-2 text-gray-600 bg-white border border-gray-300 hover:bg-gray-50 rounded-md transition"
+                                class="p-2 text-white bg-green-900 border border-gray-300 hover:bg-green-800 rounded-md transition"
                             >
                                 <ArrowDownTrayIcon class="h-4 w-4" />
                             </button>
 
                             <button
                                 title="Export"
-                                class="p-2 text-gray-600 bg-white border border-gray-300 hover:bg-gray-50 rounded-md transition"
+                                class="p-2 text-white bg-green-900 border border-gray-300 hover:bg-green-800 rounded-md transition"
                             >
                                 <ArrowUpTrayIcon class="h-4 w-4" />
                             </button>
@@ -447,7 +447,7 @@ onMounted(async () => {
 
                 <!-- Import Modal -->
                <Modal :show="xl.isImportModalOpen" @close="xl.isImportModalOpen = false">
-                    <div class="relative bg-white p-8 rounded-lg max-w-md mx-auto relative">
+                    <div class=" bg-white p-8 rounded-lg max-w-md mx-auto relative">
                         <h2 class="text-lg font-medium mb-6">Import Students</h2>
                         
                         <form @submit.prevent="xl.importStudents" class="space-y-4">

@@ -10,7 +10,6 @@
 </template>
 
 <script setup>
-import {defineEmits, watch } from 'vue'
 import Toast from './Toast.vue'
 
 const props = defineProps({
@@ -25,10 +24,4 @@ const emit = defineEmits(['remove'])
 const removeToast = (id) => {
   emit('remove', id)
 }
-
-// Debug watch
-// watch(() => props.toasts, (newToasts) => {
-//   console.log('🔔 ToastContainer received toasts:', newToasts);
-//   console.log('🔔 Number of toasts:', newToasts?.length || 0);
-// }, { deep: true, immediate: true });
 </script>

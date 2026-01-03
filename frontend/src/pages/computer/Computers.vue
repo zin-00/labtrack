@@ -479,104 +479,120 @@ watch(modalState, async (newVal) => {
         <LoaderSpinner :is-loading="isLoading" subMessage="Please wait while we fetch your data" />
 
       <div>
-        <h2 class="text-2xl text-gray-900">Computer Management</h2>
-         <p class="mt-1 text-sm text-gray-600">Manage computers, unlock remotely, and perform CRUD.</p>
-      </div>
+        <!-- Header Section -->
+        <div class="mb-6">
+          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <!-- Row 1: Page Title -->
+            <div class="mb-4">
+              <h1 class="text-xl font-semibold text-gray-900">Computer Management</h1>
+              <p class="text-sm text-gray-600 mt-0.5">Manage computers, unlock remotely, and perform CRUD.</p>
+            </div>
 
-      <!-- Filters + Add -->
-      <div class="flex flex-col gap-4 mb-6 mt-5">
-        <!-- Filters Row -->
-        <div class="flex flex-col sm:flex-row gap-3 flex-wrap">
-          <!-- Search Filter-->
-          <div class="relative flex-1 min-w-[200px] max-w-xs">
-            <input
-                v-model="searchQuery"
-                type="text"
-                placeholder="Search globally..."
-                class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:border-gray-500 focus:ring-1 focus:ring-gray-400 transition"
-            >
-            <button
-                v-if="searchQuery"
-                @click="searchQuery = ''"
-                class="absolute right-2 top-2.5 text-gray-400 hover:text-gray-600"
-            >
-                <XIcon :stroke-width="1.50" class="w-4 h-4" />
-            </button>
+            <!-- Row 2: Filters and Actions -->
+            <div class="flex flex-wrap items-center gap-3 pt-3 border-t border-gray-100">
+              <!-- Left Side: Filters -->
+              <div class="flex flex-wrap items-center gap-3 flex-1">
+                <!-- Search Filter -->
+                <div class="relative w-64">
+                  <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                  </div>
+                  <input
+                    v-model="searchQuery"
+                    type="text"
+                    placeholder="Search computers..."
+                    class="block w-full pl-9 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-200 focus:border-gray-400 text-sm transition-colors bg-white"
+                  >
+                  <button
+                    v-if="searchQuery"
+                    @click="searchQuery = ''"
+                    class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                  >
+                    <XIcon class="h-4 w-4" />
+                  </button>
+                </div>
+
+                <!-- Lab Filter -->
+                <div class="w-44">
+                  <select
+                    v-model="selectedLab"
+                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-200 focus:border-gray-400 text-sm bg-white transition-colors"
+                  >
+                    <option value="all">All Laboratories</option>
+                    <option v-for="lab in func.labs || []" :key="lab.id" :value="lab.id">
+                      {{ lab.name }}
+                    </option>
+                  </select>
+                </div>
+
+                <!-- Status Filter -->
+                <div class="w-36">
+                  <select
+                    v-model="selectedStatus"
+                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-200 focus:border-gray-400 text-sm bg-white transition-colors"
+                  >
+                    <option value="all">All Status</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                    <option value="maintenance">Maintenance</option>
+                  </select>
+                </div>
+
+                <!-- Results Count -->
+                <div class="text-xs text-gray-600 bg-gray-100 px-3 py-2 rounded-lg border border-gray-200">
+                  {{ filteredComputers.length }} result{{ filteredComputers.length !== 1 ? 's' : '' }}
+                </div>
+              </div>
+
+              <!-- Right Side: Action Buttons (Icon Only) -->
+              <div class="flex items-center gap-2">
+                <!-- Lock Button -->
+                <button
+                  @click="openLockModal"
+                  class="px-3 py-2 bg-green-900 text-white rounded-lg hover:bg-green-800 transition-colors"
+                  title="Lock Computers"
+                >
+                  <LockIcon class="w-4 h-4" />
+                </button>
+
+                <!-- Unlock Button -->
+                <button
+                  @click="openUnlockModal"
+                  class="px-3 py-2 bg-green-900 text-white rounded-lg hover:bg-green-800 transition-colors"
+                  title="Unlock Computers"
+                >
+                  <UnlockIcon class="w-4 h-4" />
+                </button>
+
+                <!-- Selection Mode Toggle -->
+                <button
+                  @click="toggleSelectionMode"
+                  :class="isSelectionMode 
+                    ? 'bg-gray-700 text-white hover:bg-gray-600' 
+                    : 'bg-green-900 text-white hover:bg-green-800'"
+                  class="px-3 py-2 rounded-lg transition-colors"
+                  title="Select Mode"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                  </svg>
+                </button>
+
+                <!-- Add Computer -->
+                <button
+                  @click="openAddComputerModal"
+                  class="px-3 py-2 bg-green-900 text-white rounded-lg hover:bg-green-800 transition-colors"
+                  title="Add Computer"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                  </svg>
+                </button>
+              </div>
+            </div>
           </div>
-
-          <!-- Lab -->
-          <div class="min-w-[160px] sm:min-w-[180px]">
-            <select
-              v-model="selectedLab"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:border-gray-500 focus:ring-1 focus:ring-gray-400 transition bg-white"
-            >
-              <option value="all">All Laboratories</option>
-              <option v-for="lab in func.labs || []" :key="lab.id" :value="lab.id">
-                {{ lab.name }}
-              </option>
-            </select>
-          </div>
-
-          <!-- Status -->
-          <div class="min-w-[140px] sm:min-w-[160px]">
-            <select
-              v-model="selectedStatus"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:border-gray-500 focus:ring-1 focus:ring-gray-400 transition bg-white"
-            >
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-              <option value="maintenance">Maintenance</option>
-            </select>
-          </div>
-
-          <!-- Clear Filters -->
-          <button
-            @click="clearFilters"
-            class="px-3 py-2 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors whitespace-nowrap"
-          >
-            Clear Filters
-          </button>
-        </div>
-
-        <!-- Action Buttons Row -->
-        <div class="flex flex-wrap gap-2">
-          <!-- Lock Button -->
-          <button
-            @click="openLockModal"
-            class="flex-1 sm:flex-none px-4 py-2 bg-gray-900 text-white rounded-md hover:bg-gray-800 transition flex items-center justify-center gap-2 text-sm font-medium"
-          >
-            <LockIcon class="w-4 h-4" />
-            <span>Lock</span>
-          </button>
-
-          <!-- Unlock Button -->
-          <button
-            @click="openUnlockModal"
-            class="flex-1 sm:flex-none px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition flex items-center justify-center gap-2 text-sm font-medium"
-          >
-            <UnlockIcon class="w-4 h-4" />
-            <span>Unlock</span>
-          </button>
-
-          <!-- Selection Mode Toggle -->
-          <button
-            @click="toggleSelectionMode"
-            :class="isSelectionMode 
-              ? 'bg-gray-700 text-white hover:bg-gray-600' 
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'"
-            class="flex-1 sm:flex-none px-4 py-2 rounded-md transition flex items-center justify-center gap-2 text-sm font-medium"
-          >
-            <span>{{ isSelectionMode ? 'Cancel' : 'Select' }}</span>
-          </button>
-
-          <!-- Add Computer -->
-          <button
-            @click="openAddComputerModal"
-            class="flex-1 sm:flex-none px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-500 transition flex items-center justify-center gap-2 text-sm font-medium"
-          >
-            <span>+ Add</span>
-          </button>
         </div>
       </div>
 
@@ -861,7 +877,7 @@ watch(modalState, async (newVal) => {
             <button
               :disabled="isSubmitting"
               @click="unlock_function"
-              class="px-4 py-2 text-sm bg-gray-700 text-white rounded-lg hover:bg-gray-600 disabled:opacity-50 transition"
+              class="px-4 py-2 text-sm bg-green-900 text-white rounded-lg hover:bg-green-800 disabled:opacity-50 transition"
             >
               {{ isSubmitting ? 'Unlocking…' : 'Unlock' }}
             </button>
@@ -870,17 +886,33 @@ watch(modalState, async (newVal) => {
       </Modal>
 
     <!-- Add / Edit Computer Modal (Custom Wide Modal) -->
-    <div
-      v-if="saveModal"
-      class="fixed inset-0 z-50 overflow-y-auto"
-      @click.self="saveModal = false"
+    <Transition
+      enter-active-class="transition ease-out duration-200"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition ease-in duration-150"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
     >
-      <div class="flex min-h-screen items-center justify-center p-4">
-        <!-- Backdrop -->
-        <div class="fixed inset-0 bg-black bg-opacity-50 transition-opacity"></div>
-        
-        <!-- Modal Content -->
-        <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-4xl border border-gray-200">
+      <div
+        v-if="saveModal"
+        class="fixed inset-0 z-50 overflow-y-auto"
+        @click.self="saveModal = false"
+      >
+        <div class="flex min-h-screen items-center justify-center p-4">
+          <!-- Backdrop -->
+          <div class="fixed inset-0 bg-white/70 backdrop-blur-sm transition-opacity"></div>
+          
+          <!-- Modal Content -->
+          <Transition
+            enter-active-class="transition ease-out duration-200"
+            enter-from-class="opacity-0 scale-95"
+            enter-to-class="opacity-100 scale-100"
+            leave-active-class="transition ease-in duration-150"
+            leave-from-class="opacity-100 scale-100"
+            leave-to-class="opacity-0 scale-95"
+          >
+            <div v-if="saveModal" class="relative bg-white rounded-xl shadow-2xl w-full max-w-4xl border border-gray-200">
           <!-- Header -->
           <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
             <h2 class="text-xl font-semibold text-gray-900">
@@ -998,14 +1030,16 @@ watch(modalState, async (newVal) => {
             </button>
             <button
               @click="saveComputer"
-              class="px-5 py-2.5 text-sm font-medium text-white bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"
+              class="px-5 py-2.5 text-sm font-medium text-white bg-green-900 rounded-lg hover:bg-green-800 transition-colors"
             >
               {{ selectedComputer ? 'Update Computer' : 'Add Computer' }}
             </button>
           </div>
         </div>
+          </Transition>
+        </div>
       </div>
-    </div>
+    </Transition>
 
         <!--Student Assignment Modal -->
       <StudentAssignmentModal
@@ -1124,7 +1158,7 @@ watch(modalState, async (newVal) => {
             <button
               @click="lockAllComputers"
               :disabled="unlockedComputersInView.length === 0"
-              class="w-full px-4 py-3 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-800 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              class="w-full px-4 py-3 text-sm font-medium text-white bg-green-900 rounded-lg hover:bg-green-800 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <LockIcon class="w-4 h-4" />
               <span v-if="currentLabName">
@@ -1199,7 +1233,7 @@ watch(modalState, async (newVal) => {
             <button
               @click="unlockAllComputers"
               :disabled="lockedOnlineComputersInView.length === 0"
-              class="w-full px-4 py-3 text-sm font-medium text-white bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              class="w-full px-4 py-3 text-sm font-medium text-white bg-green-900 rounded-lg hover:bg-green-800 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <UnlockIcon class="w-4 h-4" />
               <span v-if="currentLabName">
