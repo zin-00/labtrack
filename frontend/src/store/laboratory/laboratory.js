@@ -16,7 +16,7 @@ export const useLaboratoryStore = defineStore('laboratory', () => {
         try {
             const { data } = await axios.get(`${api}/laboratories`, getAuthHeader());
             laboratories.value = data.laboratories || [];
-            console.log('Laboratories fetched:', laboratories.value);
+            // console.log('Laboratories fetched:', laboratories.value);
         } catch (error) {
             console.error('Error fetching laboratories:', error);
         }

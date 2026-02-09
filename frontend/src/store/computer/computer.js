@@ -161,10 +161,10 @@ const unlockAssignedComputer = async (rfid_uid) => {
       getAuthHeader()
     );
     
-    console.log('Full response:', response);
-    console.log('Message:', response.data.message);
-    console.log('Computers:', response.data.computers);
-    console.log('Student:', response.data.student);
+    // console.log('Full response:', response);
+    // console.log('Message:', response.data.message);
+    // console.log('Computers:', response.data.computers);
+    // console.log('Student:', response.data.student);
     
     success(response.data.message);
     
